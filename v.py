@@ -14,7 +14,6 @@ from OpenGL.GL.shaders import *
 import glfw
 import sys
 
-### experimental
 oflow_shader = """
     vec4 hsvtorgb(vec4 colo)
     {
@@ -40,8 +39,8 @@ oflow_shader = """
        return outp;
     }
 
-   float M_PI = 3.14159265358979323846;
-   float M_PI_2 = 3.14159265358979323846;
+   float M_PI = 3.1415926535897932;
+   float M_PI_2 = 1.5707963267948966;
     float atan2(float x, float y)
     {
        if (x>0.0) { return atan(y/x); }
@@ -59,10 +58,49 @@ oflow_shader = """
   void main (void)
   {
        vec4 p = texture2D(src, gl_TexCoord[0].xy);
-
-       vec4 q = vec4(180.0*(atan2(p.x,p.w)/M_PI + 1.0), 
-                        sqrt(p.x*p.x+p.w*p.w),1.0,0.0);
+       float a = (180.0/M_PI)*(atan2(-p.x,p.w) + M_PI);
+       float r = sqrt(p.x*p.x+p.w*p.w);
+       vec4 q = vec4(a, r,r,0.0);
        p = hsvtorgb(q);
+
+       gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
+
+  }
+   """
+
+hsv_shader = """
+    vec4 hsvtorgb(vec4 colo)
+    {
+       vec4 outp;
+       float r, g, b, h, s, v; 
+       r=g=b=h=s=v=0.0;
+       h = colo.x; s = colo.y; v = colo.z;
+       if (s == 0.0) { r = g = b = v; }
+       else {
+          float H = mod(floor(h/60.0) , 6.0);
+          float p, q, t, f = h/60.0 - H;
+          p = v * (1.0 - s);
+          q = v * (1.0 - f*s);
+          t = v * (1.0 - (1.0 - f)*s);
+          if(H == 6.0 || H == 0.0) { r = v; g = t; b = p; }
+          else if(H == -1.0 || H == 5.0) { r = v; g = p; b = q; } 
+          else if(H == 1.0) { r = q; g = v; b = p; }
+          else if(H == 2.0) { r = p; g = v; b = t; }
+          else if(H == 3.0) { r = p; g = q; b = v; }
+          else if(H == 4.0) { r = t; g = p; b = v; }
+       }
+       outp.x = r; outp.y = g; outp.z = b; outp.w=colo.w;
+       return outp;
+    }
+
+  uniform sampler2D src;
+  uniform float shader_a;
+  uniform float shader_b;
+
+  void main (void)
+  {
+       vec4 q = texture2D(src, gl_TexCoord[0].xy);
+       vec4 p = hsvtorgb(q);
 
        gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
 
@@ -137,6 +175,8 @@ class ViewportState:
    data_min = 0
    data_max = 255
 
+   # VISUALIZE FLOW
+   TOGGLE_FLOW_COLORS = 0
 
 
 
@@ -485,6 +525,11 @@ def keyboard_callback(window, key, scancode, action, mods):
        V.reset_zoom()
        V.reset_scale_bias()
 
+    # reset visualization
+    if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 2
+       V.redisp = 1
+
 
     # modifier keys
     if key==glfw.GLFW_KEY_LEFT_SHIFT and action==glfw.GLFW_PRESS:
@@ -528,6 +573,7 @@ def keyboard_callback(window, key, scancode, action, mods):
        print "C     : reset contrast"
        print "D,E   : contrast scale up/down"
        print "R     : reset visualization: zoom,pan,contrast"
+       print "1     : toggle optic flow coloring"
        print "mouse wheel: contrast center"
        print "mouse wheel+shift: contrast scale"
        print "mouse motion+shift: contrast center"
@@ -630,11 +676,17 @@ def display( window ):
     
 
     ## USE THE SHADER FOR RENDERING THE IMAGE
-    global program, program_rgba, program_rb, program_oflow
+    global program, program_rgba, program_hsv, program_rb, program_oflow
     if D.nch == 2 :
-       program  = program_rb
+       if V.TOGGLE_FLOW_COLORS:
+          program  = program_oflow
+       else:
+          program  = program_rb
     else:
-       program  = program_rgba
+       if V.TOGGLE_FLOW_COLORS:
+          program  = program_hsv
+       else:
+          program  = program_rgba
 
     glUseProgram(program)   
     # set the values of the shader uniform variables (global)
@@ -850,9 +902,12 @@ def main():
 # http://python-opengl-examples.blogspot.com.es/
 # http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
 
-    global program, program_rgba, program_rb, program_oflow
+    global program, program_rgba, program_hsv, program_rb, program_oflow
     program_rgba = compileProgram( 
           compileShader(rgba_shader, GL_FRAGMENT_SHADER),
+         );
+    program_hsv = compileProgram( 
+          compileShader(hsv_shader, GL_FRAGMENT_SHADER),
          );
     program_oflow = compileProgram( 
           compileShader(oflow_shader, GL_FRAGMENT_SHADER),
@@ -862,6 +917,8 @@ def main():
          );
     
     glLinkProgram(program_rgba)
+    glLinkProgram(program_hsv)
+    glLinkProgram(program_oflow)
     glLinkProgram(program_rb)
 
     program = program_rgba
