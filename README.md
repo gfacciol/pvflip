@@ -7,7 +7,8 @@ compiles and installs the following python modules: pyglfw3m, piio
 
 
 # Execution
-   > v.py image_file
+
+    > v.py image_file
 
 
 # Local Installation
@@ -19,13 +20,13 @@ Remember to set:
     export PYTHONPATH=$PYTHONPATH:$HOME/local/lib/python2.6/site-packages
 
 
-# OSX dependency:
+# OSX dependencies (known):
     numpy > 1.5
     PyGL (pip install PyGL)
 
 
 
-# Linux dependency:
+# Linux dependencies (known):
     x11proto-xf86vidmode-dev
     xorg-dev libglu1-mesa-dev
     python-opengl
