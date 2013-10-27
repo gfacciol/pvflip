@@ -288,40 +288,12 @@ def load_image(imagename):
    import piio
    try:
       im,w,h,nch = piio.read_buffer(imagename)
-      return im,w,h,nch
+#      v_min,v_max=0.0,255.0
+      v_min,v_max = piio.minmax(im)
+#      print max(map(lambda x: float('nan') if math.isinf(x) else  x , im))
+      return im,w,h,nch,v_min,v_max
    except SystemError:
       print 'error reading the image'
-
-
-## TODO MAYBE CAN BE DONE WITHOUT NUMPY
-def image_data_to_RGBbitmap(im):
-    from numpy import empty, float32,min,max,isfinite,isnan,isinf,where,take
-
-    out = empty((im.shape[0], im.shape[1], 3))
-
-    # safe max and min
-    tmp = where(isfinite(im),im,float('nan'))
-    v_min = min(tmp)
-    v_max = max(tmp)
-
-    scale=v_max-v_min
-    if scale==0:
-       scale=1
-
-    if im.shape[2] == 3:
-       out = ((im - v_min) / scale)
-    elif im.shape[2] == 2:
-       out[:,:,0:2] = ((im - v_min) / scale)
-       out[:,:,2] = 0
-    elif im.shape[2] == 1:
-       out[:,:,0] = ((im[:,:,0] - v_min) / scale)
-       out[:,:,1] = out[:,:,0]
-       out[:,:,2] = out[:,:,0]
-
-    ## correct nan and infinite
-    out = where(isfinite(out), out, 0)
-
-    return out.astype(float32).tostring(),v_min,v_max
 
 
 def change_image(new_idx):
@@ -341,8 +313,7 @@ def change_image(new_idx):
       tic()
       # read the image
       D.filename = new_filename
-      D.imageBitmap,D.w,D.h,D.nch = load_image(new_filename)
-      D.v_min,D.v_max = 0,255
+      D.imageBitmap,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
       setupTexture(D.imageBitmap,D.w,D.h,D.nch)
       toc('loadImage+data->RGBbitmap+texture setup')
 
@@ -836,9 +807,8 @@ def main():
 
     tic()
     # read the image
-    D.imageBitmap,D.w,D.h,D.nch = load_image(I1)
+    D.imageBitmap,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
     D.filename = I1
-    D.v_min,D.v_max = 0,255
     V.data_min, V.data_max=  D.v_min,D.v_max 
     V.reset_scale_bias()
     toc('loadImage+data->RGBbitmap')
