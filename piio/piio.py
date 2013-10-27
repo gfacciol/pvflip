@@ -20,7 +20,7 @@ def read(filename):
    IIO: numpyarray = read(filename)
    '''
    from numpy import ctypeslib
-   from ctypes import c_int, c_float, c_void_p, CDLL, POINTER, cast, byref
+   from ctypes import c_int, c_float, c_void_p, POINTER, cast, byref
 
    iioread = libiio.iio_read_image_float_vec
    
@@ -45,7 +45,7 @@ def read(filename):
    
    # free the memory
    iiofreemem = libiio.freemem
-   iiofreemem(ptr);
+   iiofreemem(ptr)
    return data
 
 
@@ -54,7 +54,7 @@ def read_buffer(filename):
    '''
    IIO: float_buffer, w, h, nch = read_buffer(filename)
    '''
-   from ctypes import c_int, c_float, c_void_p, CDLL, POINTER, cast, byref, c_char, memmove, create_string_buffer, sizeof
+   from ctypes import c_int, c_float, c_void_p, POINTER, cast, byref, c_char, memmove, create_string_buffer, sizeof
 
    iioread = libiio.iio_read_image_float_vec
    
@@ -77,9 +77,31 @@ def read_buffer(filename):
    memmove(data,ptr,N*sizeof(c_float))
 
    # free the memory
-   libiio.freemem(ptr);
+   libiio.freemem(ptr)
 
    return data, w.value, h.value, nch.value
+
+
+
+def minmax(data):
+   '''
+   IIO: write(filename,numpyarray)
+   '''
+   from ctypes import c_int, c_float, POINTER, cast, byref, c_void_p
+
+   c_float_p = POINTER(c_float)       # define a new type of pointer
+
+   vmin=c_float()
+   vmax=c_float()
+
+   N = len(data)
+   dataptr = cast(data,c_float_p)
+
+   libiio.minmax.restype = c_void_p  # it's like this
+   libiio.minmax.argtypes = [c_float_p,c_int,c_float_p,c_float_p]
+   libiio.minmax(dataptr,N,byref(vmin),byref(vmax))
+   return vmin.value, vmax.value
+
 
 
 def buffer_to_numpy(data,w,h,nch):
@@ -92,11 +114,12 @@ def buffer_to_numpy(data,w,h,nch):
    return dataNP
 
 
+
 def write(filename,data):
    '''
    IIO: write(filename,numpyarray)
    '''
-   from ctypes import CDLL, c_char_p, c_int, c_float
+   from ctypes import c_char_p, c_int, c_float
    from numpy.ctypeslib import ndpointer
 
    iiosave = libiio.iio_save_image_float_vec
@@ -110,6 +133,7 @@ def write(filename,data):
    iiosave.restype = None
    iiosave.argtypes = [c_char_p, ndpointer(c_float),c_int,c_int,c_int]
    iiosave(filename, data.astype('float32'), w, h, nch)
+
 
 
 #d = piio.read('testimg.tif')

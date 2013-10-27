@@ -1,2 +1,2 @@
-from .piio import read, write, read_buffer
+from .piio import read, write, read_buffer, minmax
 
