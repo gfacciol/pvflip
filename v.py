@@ -183,7 +183,8 @@ class ViewportState:
    ## contrast functions
    def update_scale_and_bias(V):
       ''' scale and bias are applied to the pixels as: scale * pixel + bias'''
-      V.scale_param = 1/(2.0*V.v_radius)
+      if V.v_radius:
+         V.scale_param = 1/(2.0*V.v_radius)
       V.bias_param  = -(V.v_center-V.v_radius)*V.scale_param
       V.redisp=1
 
@@ -314,6 +315,7 @@ def change_image(new_idx):
       # read the image
       D.filename = new_filename
       D.imageBitmap,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
+      V.data_min, V.data_max=  D.v_min,D.v_max 
       setupTexture(D.imageBitmap,D.w,D.h,D.nch)
       toc('loadImage+data->RGBbitmap+texture setup')
 
