@@ -17,7 +17,7 @@ compiles and installs the following python modules: pyglfw3m, piio
 
 Remember to set:
 
-    export PYTHONPATH=$PYTHONPATH:$HOME/local/lib/python2.6/site-packages
+    export PYTHONPATH=$PYTHONPATH:$HOME/local/lib/pythonXXX/site-packages
 
 
 # OSX dependencies (known):
