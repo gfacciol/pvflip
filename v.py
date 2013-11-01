@@ -60,7 +60,7 @@ oflow_shader = """
        vec4 p = texture2D(src, gl_TexCoord[0].xy);
        float a = (180.0/M_PI)*(atan2(-p.x,p.w) + M_PI);
        float r = sqrt(p.x*p.x+p.w*p.w);
-       vec4 q = vec4(a, r,r,0.0);
+       vec4 q = vec4(a, 1.0,r,0.0);
        p = hsvtorgb(q);
 
        gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
@@ -792,13 +792,6 @@ def main():
           stat(I1)
        except OSError:
           exit(1)
-
-
-
-
-
-
-
 
 
 
