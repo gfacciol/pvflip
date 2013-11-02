@@ -190,7 +190,7 @@ class ViewportState:
 
    def radius_update(V, offset):
       d = V.v_radius*.1
-      V.v_radius = max(V.v_radius + d*offset,V.data_min)
+      V.v_radius = max(V.v_radius + d*offset,0)
       V.update_scale_and_bias()
 
    def center_update(V, offset):
