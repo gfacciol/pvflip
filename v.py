@@ -333,6 +333,7 @@ def change_image(new_idx):
       # setup texture 
       #tic()
       setupTexture(D.imageBitmap,D.w,D.h,D.nch)
+      V.data_min, V.data_max=  D.v_min,D.v_max 
       #toc('texture setup')
 
    return new_idx
