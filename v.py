@@ -857,7 +857,7 @@ def main():
     glfw.glfwSetScrollCallback(window, mouseWheel_callback)
     glfw.glfwSetCursorPosCallback(window, mouseMotion_callback)
     glfw.glfwSetFramebufferSizeCallback(window, resize_callback)
-    glfw.glfwSetCharCallback (window, unicode_char_callback)
+#    glfw.glfwSetCharCallback (window, unicode_char_callback)
     toc('glfw init')
 
 
