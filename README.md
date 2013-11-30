@@ -21,7 +21,6 @@ Remember to set:
 
 
 # OSX dependencies (known):
-    numpy > 1.5
     PyGL (pip install PyGL)
 
 
@@ -30,5 +29,7 @@ Remember to set:
     x11proto-xf86vidmode-dev
     xorg-dev libglu1-mesa-dev
     python-opengl
-    numpy > 1.5
 
+
+# Optional dependency (only for some piio functions):
+    numpy > 1.5

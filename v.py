@@ -60,7 +60,7 @@ oflow_shader = """
        vec4 p = texture2D(src, gl_TexCoord[0].xy);
        float a = (180.0/M_PI)*(atan2(-p.x,p.w) + M_PI);
        float r = sqrt(p.x*p.x+p.w*p.w);
-       vec4 q = vec4(a, r,r,0.0);
+       vec4 q = vec4(a, 1.0,r,0.0);
        p = hsvtorgb(q);
 
        gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
@@ -190,7 +190,7 @@ class ViewportState:
 
    def radius_update(V, offset):
       d = V.v_radius*.1
-      V.v_radius = max(V.v_radius + d*offset,V.data_min)
+      V.v_radius = max(V.v_radius + d*offset,0)
       V.update_scale_and_bias()
 
    def center_update(V, offset):
@@ -333,6 +333,7 @@ def change_image(new_idx):
       # setup texture 
       #tic()
       setupTexture(D.imageBitmap,D.w,D.h,D.nch)
+      V.data_min, V.data_max=  D.v_min,D.v_max 
       #toc('texture setup')
 
    return new_idx
@@ -570,6 +571,9 @@ def resize_callback(window, width, height):
    V.winx,V.winy=width,height
    V.redisp=1
 
+def unicode_char_callback(window, codepoint):
+   pass
+   #print codepoint
 
 
 
@@ -678,7 +682,7 @@ def display( window ):
     if V.display_hud:
        a=D.v_max-D.v_min
        b=D.v_min
-       drawHud('%s\n%s\n%.3f %.3f\n%.3f %.3f'%(V.txt_pos,V.txt_val,V.v_center,V.v_radius,D.v_min,D.v_max))
+       drawHud('%s\n%s\n%s\n%.3f %.3f\n%.3f %.3f'%(D.filename, V.txt_pos,V.txt_val,V.v_center,V.v_radius,D.v_min,D.v_max))
 
 
     # show RECTANGULAR region
@@ -783,22 +787,20 @@ def main():
     if len(sys.argv) > 1:
        I1 = sys.argv[1]
     else:
-       print "Incorrect syntax, use:"
-       print '  > ' + sys.argv[0] + " image.png"
-       # show default image if exists
-       I1 = '/Users/facciolo/uiskentuie_standing_stone.png'
-       try:
-          from os import stat
-          stat(I1)
-       except OSError:
-          exit(1)
-
-
-
-
-
-
-
+       # check if the standard input is a tty
+       if sys.stdin.isatty():
+          print "Incorrect syntax, use:"
+          print '  > ' + sys.argv[0] + " image.png"
+          # show default image if exists
+          I1 = '/Users/facciolo/uiskentuie_standing_stone2.png'
+          try:
+             from os import stat
+             stat(I1)
+          except OSError:
+             exit(1)
+       # otherwise use stdin as input (it should be a pipe)
+       else:
+          I1 = '-'
 
 
 
@@ -855,6 +857,7 @@ def main():
     glfw.glfwSetScrollCallback(window, mouseWheel_callback)
     glfw.glfwSetCursorPosCallback(window, mouseMotion_callback)
     glfw.glfwSetFramebufferSizeCallback(window, resize_callback)
+#    glfw.glfwSetCharCallback (window, unicode_char_callback)
     toc('glfw init')
 
 
