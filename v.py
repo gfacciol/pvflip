@@ -305,7 +305,6 @@ def change_image(new_idx):
    NUM_FILES = (len(sys.argv)-1)
    new_idx = new_idx % NUM_FILES
    new_filename = sys.argv[new_idx+1]
-   print (new_idx,new_filename)
 
 
    if new_idx not in DD:
@@ -335,6 +334,8 @@ def change_image(new_idx):
       setupTexture(D.imageBitmap,D.w,D.h,D.nch)
       V.data_min, V.data_max=  D.v_min,D.v_max 
       #toc('texture setup')
+
+   print (new_idx,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
 
    return new_idx
 
@@ -866,6 +867,8 @@ def main():
     setupTexture(D.imageBitmap,D.w,D.h,D.nch)
     glFinish()  # Flush and wait
     toc('texture setup')
+
+    print (0,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
 
 
 
