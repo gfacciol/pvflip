@@ -371,8 +371,8 @@ def mouseMotion_callback(window, x,y):
 
 
     centerval = D.get_image_point(int(tx),int(ty))
+    V.txt_pos = '%s %s'%(int(tx),int(ty))
     if not centerval==None:
-       V.txt_pos = '%s %s'%(int(tx),int(ty))
        if len(centerval)==1:
           V.txt_val = '%s'%(centerval[0])
        elif len(centerval)==2:
