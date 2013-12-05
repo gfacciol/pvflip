@@ -104,6 +104,7 @@
 #define IIO_FORMAT_JUV 20
 #define IIO_FORMAT_LUM 21
 #define IIO_FORMAT_PCM 22
+#define IIO_FORMAT_ASC 23
 #define IIO_FORMAT_UNRECOGNIZED (-1)
 
 //
@@ -119,7 +120,7 @@
 	fprintf(stderr,"DEBUG(%s:%d:%s): ",__FILE__,__LINE__,__PRETTY_FUNCTION__);\
 	fprintf(stderr,__VA_ARGS__);} while(0)
 #else//IIO_SHOW_DEBUG_MESSAGES
-#  define IIO_DEBUG(...) do { ; } while(0) /* nothing */
+#  define IIO_DEBUG(...) do { do_nop(__VA_ARGS__); } while(0) /* nothing */
 #endif//IIO_SHOW_DEBUG_MESSAGES
 
 //
@@ -223,6 +224,13 @@ static void fail(const char *fmt, ...)
 	exit(*(int *)0x43);
 #  endif//NDEBUG
 #endif//IIO_ABORT_ON_ERROR
+}
+
+static void do_nop(void *p, ...)
+{
+	va_list argp;
+	va_start(argp, p);
+	va_end(argp);
 }
 
 static void *xmalloc(size_t size)
@@ -334,6 +342,18 @@ uppsala:
 	if (c == comment_char) goto uppsala;
 }
 
+static void fill_temporary_filename(char *out)
+{
+#ifdef I_CAN_HAS_MKSTEMP
+		static char tfn[] = "/tmp/iio_temporary_file_XXXXXX\0";
+		int r = mkstemp(tfn);
+		if (r == -1) fail("caca [tfn]");
+#else
+		static char buf[L_tmpnam+1];
+		char *tfn = tmpnam(buf);
+#endif//I_CAN_HAS_MKSTEMP
+		strcpy(out, tfn);
+}
 
 
 // struct iio_image { ... }; {{{1
@@ -489,6 +509,20 @@ static const char *iio_strtyp(int type)
 #undef M
 }
 
+static int iio_inttyp(const char *typename)
+{
+	int n = strlen(typename);
+	char utyp[n+1]; utyp[n] = '\0';
+	for (int i = 0; i < n; i++)
+		utyp[i] = toupper(typename[i]);
+#define M(t) if(!strcmp(utyp,#t))return IIO_TYPE_ ## t
+	M(INT8); M(UINT8); M(INT16); M(UINT16); M(INT32); M(UINT32); M(INT64);
+	M(UINT64); M(FLOAT); M(DOUBLE); M(LONGDOUBLE); M(HALF); M(UINT1);
+	M(UINT2); M(UINT4); M(CHAR); M(SHORT); M(INT); M(LONG); M(LONGLONG);
+#undef M
+	fail("unrecognized typename \"%s\"", typename);
+}
+
 static const char *iio_strfmt(int format)
 {
 #define M(f) case IIO_FORMAT_ ## f: return #f
@@ -496,7 +530,8 @@ static const char *iio_strfmt(int format)
 	M(WHATEVER); M(QNM); M(PNG); M(JPEG);
 	M(TIFF); M(RIM); M(BMP); M(EXR); M(JP2);
 	M(VTK); M(CIMG); M(PAU); M(DICOM); M(PFM); M(NIFTI);
-	M(PCX); M(GIF); M(XPM); M(RAFA); M(FLO); M(JUV);
+	M(PCX); M(GIF); M(XPM); M(RAFA); M(FLO); M(LUM); M(JUV);
+	M(PCM); M(ASC);
 	M(UNRECOGNIZED);
 	default: fail("caca de la grossa");
 	}
@@ -1271,21 +1306,21 @@ static int read_beheaded_png(struct iio_image *x,
 			;
 	png_read_png(pp, pi, transforms, NULL);
 	png_uint_32 w, h;
-	int channels, rowbytes;
-	int depth, color;//, interl, compr, filt;
+	int channels;//, rowbytes;
+	int depth;//, color;//, interl, compr, filt;
 	w = png_get_image_width(pp, pi);
 	h = png_get_image_height(pp, pi);
 	//png_get_IHDR(pp, pi, &w, &h, &depth, &color, &interl, &compr, &filt);
 	channels = png_get_channels(pp, pi);
-	rowbytes = png_get_rowbytes(pp, pi);
+	//rowbytes = png_get_rowbytes(pp, pi);
 	depth = png_get_bit_depth(pp, pi);
-	color = png_get_color_type(pp, pi);
+	//color = png_get_color_type(pp, pi);
 	IIO_DEBUG("png get width = %d\n", (int)w);
 	IIO_DEBUG("png get height = %d\n", (int)h);
 	IIO_DEBUG("png get channels = %d\n", channels);
-	IIO_DEBUG("png get rowbytes = %d\n", rowbytes);
+	//IIO_DEBUG("png get rowbytes = %d\n", rowbytes);
 	IIO_DEBUG("png get depth = %d\n", depth);
-	IIO_DEBUG("png get color = %d\n", color);
+	//IIO_DEBUG("png get color = %d\n", color);
 	//IIO_DEBUG("png ihdr width = %d\n", (int)w);
 	//IIO_DEBUG("png ihdr height = %d\n", (int)h);
 	//IIO_DEBUG("png ihdr depth = %d\n", depth);
@@ -1356,7 +1391,7 @@ static int read_whole_jpeg(struct iio_image *x, FILE *f)
 	size[0] = cinfo->image_width;
 	size[1] = cinfo->image_height;
 	depth = cinfo->num_components;
-	IIO_DEBUG("jpeg header widht = %d\n", size[0]);
+	IIO_DEBUG("jpeg header width = %d\n", size[0]);
 	IIO_DEBUG("jpeg header height = %d\n", size[1]);
 	IIO_DEBUG("jpeg header colordepth = %d\n", depth);
 	iio_image_build_independent(x, 2, size, IIO_TYPE_CHAR, depth);
@@ -1417,6 +1452,7 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 {
 	// tries to read data in the correct format (via scanlines)
 	// if it fails, it tries to read ABGR data
+	TIFFSetWarningHandler(NULL);//suppress warnings
 
 	TIFF *tif = TIFFOpen(filename, "r");
 	if (!tif) fail("could not open TIFF file \"%s\"", filename);
@@ -1489,6 +1525,41 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 	uint8_t *data = xmalloc(w * h * spp * rbps);
 	//FORI(h*scanline_size) data[i] = 42;
 	uint8_t *buf = xmalloc(scanline_size);
+
+	// use a particular reader for tiled tiff
+	if (TIFFIsTiled(tif)) {
+		int tisize = TIFFTileSize(tif);
+		uint32_t tilewidth, tilelength;
+		TIFFGetField(tif, TIFFTAG_TILEWIDTH, &tilewidth);
+		TIFFGetField(tif, TIFFTAG_TILELENGTH, &tilelength);
+
+		if (bps < 8)
+			fail("only byte-oriented tiles are supported (%d)",bps);
+		int Bps = bps/8;
+
+		uint8_t *tbuf = xmalloc(tisize);
+		for (uint32_t tx = 0; tx < w; tx += tilewidth)
+		for (uint32_t ty = 0; ty < h; ty += tilelength)
+		{
+			r = TIFFReadTile(tif, tbuf, tx, ty, 0, 0);
+			for (uint32_t j = 0; j < tilewidth; j++)
+			for (uint32_t i = 0; i < tilewidth; i++)
+			for (uint16_t l = 0; l < spp; l++)
+			for (int b = 0; b < Bps; b++)
+			{
+				uint32_t ii = i + tx;
+				uint32_t jj = j + ty;
+				if (ii < w && jj < h)
+				{
+				uint8_t s = tbuf[((j*tilewidth+i)*spp+l)*Bps+b];
+				((uint8_t*)data)[((jj*w+ii)*spp+l)*Bps+b] = s;
+				}
+			}
+		}
+		xfree(tbuf);
+
+		//fail("tiled tiff not fully implemented yet");
+	} else
 
 	// dump scanline data
 	FORI(h) {
@@ -1832,9 +1903,9 @@ static int read_beheaded_rim_ccimage(struct iio_image *x, FILE *f, bool swp)
 	uint32_t pm_np = rim_getint(f, swp);
 	uint32_t pm_nrow = rim_getint(f, swp);
 	uint32_t pm_ncol = rim_getint(f, swp);
-	uint32_t pm_band = rim_getint(f, swp);
+	uint32_t pm_band = rim_getint(f, swp);(void)pm_band;
 	uint32_t pm_form = rim_getint(f, swp);
-	uint32_t pm_cmtsize = rim_getint(f, swp);
+	uint32_t pm_cmtsize = rim_getint(f, swp);(void)pm_cmtsize;
 
 	IIO_DEBUG("RIM READER pm_np = %d\n", (int)pm_np);
 	IIO_DEBUG("RIM READER pm_nrow = %d\n", (int)pm_nrow);
@@ -1890,6 +1961,17 @@ static int read_beheaded_rim(struct iio_image *x, FILE *f, char *h, int nh)
 	if (h[0] == 'V' && h[1] == 'I')
 		return read_beheaded_rim_ccimage(x, f, true);
 	return 1;
+}
+
+static void switch_2endianness(void *tt, int n)
+{
+	char *t = tt;
+	FORI(n) {
+		char tmp[2] = {t[0], t[1]};
+		t[0] = tmp[1];
+		t[1] = tmp[0];
+		t += 2;
+	}
 }
 static void switch_4endianness(void *tt, int n)
 {
@@ -1988,9 +2070,30 @@ static int lum_pickshort(char *ss)
 	return 0x100*a + b;
 }
 
+static int read_beheaded_lum12(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	int w = *(uint32_t*)header;
+	int h = *(uint32_t*)(header+4);
+	while (nheader++ < 11968)
+		pick_char_for_sure(f);
+	uint16_t *data = xmalloc(w*h*sizeof*data);
+	if (1 != fread(data, w*h*2, 1, f)) return (xfree(data),-1);
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = 1;
+	x->type = IIO_TYPE_UINT16;
+	x->contiguous_data = false;
+	x->data = data;
+	return 0;
+}
+
 static int read_beheaded_lum(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
+	if (header[8] == '1')
+		return read_beheaded_lum12(x, f, header, nheader);
 	int w = lum_pickshort(header+2);
 	int h = lum_pickshort(header+6);
 	while (nheader++ < 0xf94)
@@ -2149,6 +2252,192 @@ static int read_beheaded_exr(struct iio_image *x,
 }
 
 #endif//I_CAN_HAS_LIBEXR
+
+
+
+// ASC reader {{{2
+static int read_beheaded_asc(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	assert(header[nheader-1] == '\n');
+	int n[4], r = sscanf(header, "%d %d %d %d\n", n, n+1, n+2, n+3);
+	if (r != 4) return 1;
+	x->dimension = 2;
+	x->sizes[0] = n[0];
+	x->sizes[1] = n[1];
+	x->sizes[2] = n[2];
+	if (n[2] > 1)
+		x->dimension = 3;
+	x->pixel_dimension = n[3];
+	x->type = IIO_TYPE_FLOAT;
+	int nsamples = iio_image_number_of_samples(x);
+	float *xdata = xmalloc(nsamples * sizeof*xdata);
+	read_qnm_numbers(xdata, f, nsamples, 0, true);
+	x->data = xmalloc(nsamples * sizeof*xdata);
+	recover_broken_pixels_float(x->data, xdata, n[0]*n[1]*n[2], n[3]);
+	xfree(xdata);
+	x->contiguous_data = false;
+	return 0;
+}
+
+// RAW reader {{{2
+
+// Note: there are two raw readers, either the user supplies the
+// dimensions and data format, or she defines where they can be found.
+// They are named, respectively, explicit and fancy.
+//
+// Note2: to be implemented
+
+// if f ~ /RAW[.*]:.*/ return the position of the colon
+static char *raw_prefix(const char *f)
+{
+	if (f != strstr(f, "RAW["))
+		return NULL;
+	char *colon = strchr(f, ':');
+	if (!colon || colon[-1] != ']')
+		return NULL;
+	return colon;
+}
+
+// explicit raw reader (input = a given block of memory)
+static int parse_raw_binary_image_explicit(struct iio_image *x,
+		void *data, size_t ndata,
+		int w, int h, int pd,
+		int header_bytes, int sample_type,
+		bool broken_pixels, bool endianness)
+{
+	size_t nsamples = w*h*pd;
+	size_t ss = iio_type_size(sample_type);
+	if (ndata != header_bytes + nsamples*ss) {
+		fprintf(stderr, "bad raw file size (%zu != %d + %zu)",
+				ndata, header_bytes, nsamples);
+		return 1;
+	}
+	int sizes[2] = {w, h};
+	iio_image_build_independent(x, 2, sizes, sample_type, pd);
+	size_t n = nsamples * ss;
+	memcpy(x->data, header_bytes + (char*)data, n);
+	if (endianness)
+		switch_4endianness(x->data, nsamples);
+	return 0;
+}
+
+// get an integer field from a data file, whose position
+// and type is determined by "tok"
+static int raw_gfp(void *dat, int siz, char *tok, int endianness)
+{
+	int fpos, fsiz = -4;
+	if (2 == sscanf(tok, "%d/%d", &fpos, &fsiz));
+	else if (1 == sscanf(tok, "%d", &fpos));
+	else return 0;
+	IIO_DEBUG("raw gfp tok=%s fpos=%d fiz=%d\n", tok, fpos, fsiz);
+	void *pvalue = fpos + (char*)dat;
+	if (fpos < 0 || abs(fsiz) + fpos > siz)
+		fail("can not read field beyond data size");
+	if (endianness && abs(fsiz)==2) switch_2endianness(pvalue, 1);
+	if (endianness && abs(fsiz)==4) switch_4endianness(pvalue, 1);
+	switch(fsiz) {
+	case  1: return *( uint8_t*)pvalue;
+	case  2: return *(uint16_t*)pvalue;
+	case  4: return *(uint32_t*)pvalue;
+	case -1: return *(  int8_t*)pvalue;
+	case -2: return *( int16_t*)pvalue;
+	case -4: return *( int32_t*)pvalue;
+	default: fail("unrecognized field size %d", fsiz);
+	}
+}
+
+static int read_raw_named_image(struct iio_image *x, const char *filespec)
+{
+	// filespec => description + filename
+	char *colon = raw_prefix(filespec);
+	size_t desclen = colon - filespec - 5;
+	char description[desclen+1];
+	char *filename = colon + 1;
+	memcpy(description, filespec+4, desclen);
+	description[desclen] = '\0';
+
+	// read data from file
+	long file_size;
+	void *file_contents = NULL;
+	{
+		FILE *f = xfopen(filename, "r");
+		file_contents = load_rest_of_file(&file_size, f, NULL, 0);
+		xfclose(f);
+	}
+
+	// fill-in data description
+	int width = -1;
+	int height = -1;
+	int pixel_dimension = 1;
+	int brokenness = 0;
+	int endianness = 0;
+	int sample_type = IIO_TYPE_UINT8;
+	int offset = -1;
+
+	// parse description string
+	char *delim = ",", *tok = strtok(description, delim);
+	int field;
+	while (tok) {
+		IIO_DEBUG("\ttoken = %s\n", tok);
+		if (tok[1] == '@')
+			field = raw_gfp(file_contents, file_size, 2+tok,
+					endianness);
+		else
+			field = atoi(1+tok);
+		IIO_DEBUG("\tfield=%d\n", field);
+		switch(*tok) {
+		case 'w': width           = field;       break;
+		case 'h': height          = field;       break;
+		case 'p': pixel_dimension = field;       break;
+		case 'o': offset          = field;       break;
+		case 'b': brokenness      = 1;                 break;
+		case 'e': endianness      = 1;                 break;
+		case 't': sample_type     = iio_inttyp(1+tok); break;
+		}
+		tok = strtok(NULL, delim);
+	}
+	int sample_size = iio_type_size(sample_type);
+
+	IIO_DEBUG("w = %d\n", width);
+	IIO_DEBUG("h = %d\n", height);
+	IIO_DEBUG("p = %d\n", pixel_dimension);
+	IIO_DEBUG("o = %d\n", offset);
+	IIO_DEBUG("b = %d\n", brokenness);
+	IIO_DEBUG("t = %s\n", iio_strtyp(sample_type));
+
+	// estimate missing dimensions
+	IIO_DEBUG("before estimation w=%d h=%d o=%d\n", width, height, offset);
+	int pd = pixel_dimension;
+	int ss = sample_size;
+	if (offset < 0 && width > 0 && height > 0)
+		offset = file_size - width * height * pd * ss;
+	if (width < 0 && offset > 0 && height > 0)
+		width = (file_size - offset)/(height * pd * ss);
+	if (height < 0 && offset > 0 && width > 0)
+		height = (file_size - offset)/(width * pd * ss);
+	if (offset < 0) offset = 0;
+	if (height < 0) height = file_size/(width * pd * ss);
+	if (width  < 0) width  = file_size/(height * pd * ss);
+	if (offset < 0 || width < 0 || height < 0)
+		fail("could not determine width, height and offset"
+				"(got %d,%d,%d)", width, height, offset);
+	IIO_DEBUG("after estimation w=%d h=%d o=%d\n", width, height, offset);
+
+	int used_data_size = offset+width*height*pd*ss;
+	if (used_data_size > file_size)
+		fail("raw file is not large enough");
+
+	int r = parse_raw_binary_image_explicit(x,
+			file_contents, file_size,
+			width, height, pixel_dimension,
+			offset, sample_type, brokenness, endianness);
+	xfree(file_contents);
+	return r;
+}
+
+
+
 
 // WHATEVER reader {{{2
 
@@ -2444,6 +2733,18 @@ static char add_to_header_buffer(FILE *f, uint8_t *buf, int *nbuf, int bufmax)
 	return c;
 }
 
+static void line_to_header_buffer(FILE *f, uint8_t *buf, int *nbuf, int bufmax)
+{
+	while (*nbuf < bufmax)
+	{
+		int c = pick_char_for_sure(f);
+		buf[*nbuf] = c;
+		*nbuf += 1;
+		if (c == '\n')
+			break;
+	}
+}
+
 static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 {
 	assert(sizeof(uint8_t)==sizeof(char));
@@ -2524,6 +2825,14 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 
 	if (b[8]=='F'&&b[9]=='L'&&b[10]=='O'&&b[11]=='A')
 		return IIO_FORMAT_LUM;
+	if (b[8]=='1'&&b[9]=='2'&&b[10]=='L'&&b[11]=='I')
+		return IIO_FORMAT_LUM;
+
+	if (!strchr((char*)b, '\n'))
+		line_to_header_buffer(f, b, nbuf, bufmax);
+	int t[4];
+	if (4 == sscanf((char*)b, "%d %d %d %d\n", t, t+1, t+2, t+3) && t[2]==1)
+		return IIO_FORMAT_ASC;
 
 	return IIO_FORMAT_UNRECOGNIZED;
 }
@@ -2544,6 +2853,7 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 	case IIO_FORMAT_JUV:   return read_beheaded_juv (x, f, h, hn);
 	case IIO_FORMAT_LUM:   return read_beheaded_lum (x, f, h, hn);
 	case IIO_FORMAT_PCM:   return read_beheaded_pcm (x, f, h, hn);
+	case IIO_FORMAT_ASC:   return read_beheaded_asc (x, f, h, hn);
 	case IIO_FORMAT_BMP:   return read_beheaded_bmp (x, f, h, hn);
 
 #ifdef I_CAN_HAS_LIBPNG
@@ -2595,12 +2905,12 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 
 //
 // This function is the core of the library.
-// Everything passes through here.
+// Nearly everything passes through here (except the "raw"  images)
 //
 static int read_image_f(struct iio_image *x, FILE *f)
 {
 	int bufmax = 0x100, nbuf, format;
-	char buf[bufmax];
+	char buf[0x100] = {0};
 	format = guess_format(f, buf, &nbuf, bufmax);
 	IIO_DEBUG("iio file format guess: %s {%d}\n", iio_strfmt(format), nbuf);
 	assert(nbuf > 0);
@@ -2609,6 +2919,8 @@ static int read_image_f(struct iio_image *x, FILE *f)
 
 static int read_image(struct iio_image *x, const char *fname)
 {
+	int r; // the return-value of this function
+
 #ifndef IIO_ABORT_ON_ERROR
 	if (setjmp(global_jump_buffer)) {
 		IIO_DEBUG("SOME ERROR HAPPENED AND WAS HANDLED\n");
@@ -2632,9 +2944,31 @@ static int read_image(struct iio_image *x, const char *fname)
 		return 0;
 	}
 
-	FILE *f = xfopen(fname, "r");
-	int r = read_image_f(x, f);
-	fclose(f);
+
+#ifdef I_CAN_HAS_WGET
+	// check for URL
+	if (fname == strstr(fname, "http://")) {
+		// TODO: for security, sanitize the fname
+		char tfn[FILENAME_MAX], cmd[FILENAME_MAX];
+		fill_temporary_filename(tfn);
+		snprintf(cmd, FILENAME_MAX, "wget %s -q -O %s", fname, tfn);
+		int rsys = system(cmd);
+		if (rsys != 0) fail("system wget returned %d", rsys);
+		FILE *f = xfopen(tfn, "r");
+		r = read_image_f(x, f);
+		xfclose(f);
+		delete_temporary_file(tfn);
+
+	} else
+#endif//I_CAN_HAS_WGET
+
+	if (raw_prefix(fname)) {
+		r = read_raw_named_image(x, fname);
+	} else {
+		FILE *f = xfopen(fname, "r");
+		r = read_image_f(x, f);
+		xfclose(f);
+	}
 
 	IIO_DEBUG("READ IMAGE return value = %d\n", r);
 	IIO_DEBUG("READ IMAGE dimension = %d\n", x->dimension);
@@ -3040,11 +3374,25 @@ static bool this_float_is_actually_a_byte(float x)
 	return (x == floor(x)) && (x >= 0) && (x < 256);
 }
 
+static bool this_float_is_actually_a_short(float x)
+{
+	return (x == floor(x)) && (x >= 0) && (x < 65536);
+}
+
 static bool these_floats_are_actually_bytes(float *t, int n)
 {
 	IIO_DEBUG("checking %d floats for byteness (%p)\n", n, (void*)t);
 	FORI(n)
 		if (!this_float_is_actually_a_byte(t[i]))
+			return false;
+	return true;
+}
+
+static bool these_floats_are_actually_shorts(float *t, int n)
+{
+	IIO_DEBUG("checking %d floats for shortness (%p)\n", n, (void*)t);
+	FORI(n)
+		if (!this_float_is_actually_a_short(t[i]))
 			return false;
 	return true;
 }
@@ -3102,12 +3450,14 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 		iio_save_image_as_rim_cimage(filename, x);
 		return;
 	}
+#ifdef I_CAN_HAS_LIBTIFF
 	if (x->pixel_dimension != 1 && x->pixel_dimension != 3 && x->pixel_dimension != 4 && x->pixel_dimension != 2 )
 	{
 		iio_save_image_as_tiff_smarter(filename, x);
 		return;
 		//error("de moment només escrivim gris ó RGB");
 	}
+#endif//I_CAN_HAS_LIBTIFF
 	if (typ != IIO_TYPE_DOUBLE && typ != IIO_TYPE_FLOAT && typ != IIO_TYPE_UINT8 && typ != IIO_TYPE_INT16 && typ != IIO_TYPE_INT8)
 		fail("de moment només fem floats o bytes (got %d)",typ);
 	int nsamp = iio_image_number_of_samples(x);
@@ -3125,6 +3475,21 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 		x->data = old_data;
 		return;
 	}
+	//else if (typ == IIO_TYPE_FLOAT &&
+	//		these_floats_are_actually_shorts(x->data, nsamp))
+	//{
+	//	void *old_data = x->data;
+	//	x->data = xmalloc(2*nsamp*sizeof(float));
+	//	memcpy(x->data, old_data, nsamp*sizeof(float));
+	//	iio_convert_samples(x, IIO_TYPE_UINT16);
+	//	//silly=false;
+	//	iio_save_image_default(filename, x); // recursive call
+	//	//silly=true;
+	//	xfree(x->data);
+	//	x->data = old_data;
+	//	return;
+	//}
+#ifdef I_CAN_HAS_LIBTIFF
 	if (true) {
 		if (false
 				|| string_suffix(filename, ".tiff")
@@ -3144,6 +3509,8 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 			return;
 		}
 	}
+#endif//I_CAN_HAS_LIBTIFF
+#ifdef I_CAN_HAS_LIBPNG
 	if (true) {
 		char *pngname = strstr(filename, "PNG:");
 		if (pngname == filename) {
@@ -3185,6 +3552,7 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 			return;
 		}
 	}
+#endif//I_CAN_HAS_LIBPNG
 	IIO_DEBUG("SIDEF:\n");
 #ifdef IIO_SHOW_DEBUG_MESSAGES
 	iio_print_image_info(stderr, x);
@@ -3242,9 +3610,12 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 			fwrite(data, w*h, 1, f);
 		}
 	} else
-			iio_save_image_as_tiff_smarter(filename, x);
-	//	error("\n\n\nThis particular data format can not yet be saved."
-	//			"\nPlease, ask enric.\n");
+#ifdef I_CAN_HAS_LIBTIFF
+		iio_save_image_as_tiff_smarter(filename, x);
+#else
+		fail("\n\n\nThis particular data format can not yet be saved."
+				"\nPlease, ask enric.\n");
+#endif//I_CAN_HAS_LIBTIFF
 	xfclose(f);
 }
 
