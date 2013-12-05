@@ -83,6 +83,54 @@ def read_buffer(filename):
 
 
 
+def read_tiled_buffers(filename):
+   '''
+   IIO: float_buffer, w, h, nch = read_buffer(filename)
+   '''
+   from ctypes import c_int, c_float, c_void_p, POINTER, cast, byref, c_char, memmove, create_string_buffer, sizeof
+   
+   w=c_int()
+   h=c_int()
+   nch=c_int()
+   
+   libiio.iio_read_image_float_vec.restype = c_void_p  # it's like this
+   tptr = libiio.iio_read_image_float_vec(filename,byref(w),byref(h),byref(nch))
+   c_float_p = POINTER(c_float)       # define a new type of pointer
+   ptr = cast(tptr, c_float_p)
+   #print w,h,nch
+   w,h,nch=w.value,h.value,nch.value
+   
+   # compute min and max of the data
+   vmin=c_float()
+   vmax=c_float()
+   N = w*h*nch
+   libiio.minmax.restype = c_void_p  # it's like this
+   libiio.minmax.argtypes = [c_float_p,c_int,c_float_p,c_float_p]
+   libiio.minmax(ptr,N,byref(vmin),byref(vmax))
+   vmin,vmax=vmin.value,vmax.value
+
+   tiles   = []
+   out_nch = min(nch,3)
+   if(nch != out_nch):
+      print "piio_read: the input image have %d channels, only the first 3 are loaded\n"%nch
+   # generate several buffers, one for each tile
+   for y in range(0,h, 1024):
+      for x in range(0,w, 1024):
+         ww = min (w - x, 1024)
+         hh = min (h - y, 1024)
+         N=ww*hh*out_nch
+         # generate the interlan memory to copy the tile
+         data = ctypes.ARRAY(ctypes.c_float, N)()
+         libiio.copy_tile(ptr, w, h, nch, data, x, y, ww, hh, out_nch)  # only allow 3 channels
+         tiles.append( (data, x, y, ww,hh, out_nch) ) 
+         
+
+   # free the memory
+   libiio.freemem(ptr)
+
+   return (tiles,w,h,out_nch,vmin,vmax)
+
+
 def minmax(data):
    '''
    IIO: write(filename,numpyarray)
