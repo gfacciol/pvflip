@@ -370,8 +370,8 @@ def mouseMotion_callback(window, x,y):
 
 
     centerval = D.get_image_point(int(tx),int(ty))
+    V.txt_pos = '%s %s'%(int(tx),int(ty))
     if not centerval==None:
-       V.txt_pos = '%s %s'%(int(tx),int(ty))
        if len(centerval)==1:
           V.txt_val = '%s'%(centerval[0])
        elif len(centerval)==2:
@@ -379,7 +379,7 @@ def mouseMotion_callback(window, x,y):
        else:
           V.txt_val = '%s %s %s'%(centerval[0], centerval[1], centerval[2])
        glfw.glfwSetWindowTitle(window, '%s:[%s]'%(V.txt_pos,V.txt_val))
-       V.redisp = 1
+    V.redisp = 1
 
 
 #    title='p:%s,%s [+%s+%s %sx%s]' % (x+V.dx,y+V.dy,x0+V.dx,y0+V.dy,w0,h0)
