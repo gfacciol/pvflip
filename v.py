@@ -760,6 +760,9 @@ def setupTexture(imageBitmap, ix,iy,nch, textureID=13):
     elif nch==2:
        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, ix, iy, 0,
          GL_LUMINANCE_ALPHA, GL_FLOAT, imageBitmap)
+    elif nch==4:
+       glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, ix, iy, 0,
+         GL_RGBA, GL_FLOAT, imageBitmap)
     else:
        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB32F, ix, iy, 0,
          GL_RGB, GL_FLOAT, imageBitmap)

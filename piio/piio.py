@@ -110,9 +110,9 @@ def read_tiled_buffers(filename):
    vmin,vmax=vmin.value,vmax.value
 
    tiles   = []
-   out_nch = min(nch,3)
+   out_nch = min(nch,4)
    if(nch != out_nch):
-      print "piio_read: the input image have %d channels, only the first 3 are loaded\n"%nch
+      print "piio_read: the input image have %d channels, only the first 4 are loaded\n"%nch
    # generate several buffers, one for each tile
    for y in range(0,h, 1024):
       for x in range(0,w, 1024):
