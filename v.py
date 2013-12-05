@@ -261,14 +261,20 @@ class ImageState:
    h=0
    nch=0
    # image data
-   imageBitmap=0
+   imageBitmapTiles=0
    v_max = 0
    v_min = 0
 
    def get_image_point(self,x,y):
       if x>=0 and y>=0 and x<self.w and y<self.h:
-         idx = (x+y*self.w)*self.nch
-         return self.imageBitmap[idx:idx+self.nch]
+         #### ACCESS THE RIGHT TILE
+         for tile in self.imageBitmapTiles:
+            if tile[1] <= x and tile[2] <= y and tile[1]+tile[3] > x and tile[2]+tile[4] > y:
+               idx = (x-tile[1]+(y-tile[2])*tile[3])*tile[5]
+               return tile[0][idx:idx+tile[5]]
+         # this should never happen
+         print "this should never happen"
+         return None
       else:
          return None
 
@@ -291,11 +297,13 @@ current_image_idx=0
 def load_image(imagename):
    import piio
    try:
-      im,w,h,nch = piio.read_buffer(imagename)
+#      im,w,h,nch = piio.read_buffer(imagename)
+      tiles,w,h,nch,vmin,vmax = piio.read_tiled_buffers(imagename)
+#      (im,x0,y0,w,h,nch) = tiles[0]
 #      v_min,v_max=0.0,255.0
-      v_min,v_max = piio.minmax(im)
+#      v_min,v_max = piio.minmax(im)
 #      print max(map(lambda x: float('nan') if math.isinf(x) else  x , im))
-      return im,w,h,nch,v_min,v_max
+      return tiles,w,h,nch,vmin,vmax
    except SystemError:
       print 'error reading the image'
 
@@ -316,9 +324,9 @@ def change_image(new_idx):
       tic()
       # read the image
       D.filename = new_filename
-      D.imageBitmap,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
+      D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
       V.data_min, V.data_max=  D.v_min,D.v_max 
-      setupTexture(D.imageBitmap,D.w,D.h,D.nch)
+      setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       toc('loadImage+data->RGBbitmap+texture setup')
 
       # tidy up memory 
@@ -334,7 +342,7 @@ def change_image(new_idx):
 
       # setup texture 
       #tic()
-      setupTexture(D.imageBitmap,D.w,D.h,D.nch)
+      setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       V.data_min, V.data_max=  D.v_min,D.v_max 
       #toc('texture setup')
 
@@ -608,10 +616,10 @@ def display( window ):
     glOrtho (0, winx, winy, 0, -1, 1);
 
 
-    def drawImage():
+    def drawImage(textureID,w,h,x0=0,y0=0):
        glPushMatrix()
        glEnable (GL_TEXTURE_2D); #/* enable texture mapping */
-       glBindTexture (GL_TEXTURE_2D, 13); #/* bind to our texture, has id of 13 */
+       glBindTexture (GL_TEXTURE_2D, textureID); #/* bind to our texture, has id of 13 */
    
        # third operation
        glTranslate(V.zoom_center[0],V.zoom_center[1],0)
@@ -626,10 +634,10 @@ def display( window ):
        # first operation
        glBegin( GL_QUADS );
        glColor3f(1.0, 0.0, 0.0);
-       glTexCoord2d(0.0,1.0); glVertex3d(0  ,D.h,0);
-       glTexCoord2d(1.0,1.0); glVertex3d(D.w,D.h,0);
-       glTexCoord2d(1.0,0.0); glVertex3d(D.w,0  ,0);
-       glTexCoord2d(0.0,0.0); glVertex3d(0  ,0  ,0);
+       glTexCoord2d(0.0,1.0); glVertex3d(x0  ,y0+h ,0);
+       glTexCoord2d(1.0,1.0); glVertex3d(x0+w,y0+h ,0);
+       glTexCoord2d(1.0,0.0); glVertex3d(x0+w,y0   ,0);
+       glTexCoord2d(0.0,0.0); glVertex3d(x0  ,y0   ,0);
        glEnd();
    
        glDisable (GL_TEXTURE_2D); #/* disable texture mapping */
@@ -677,7 +685,10 @@ def display( window ):
     glUniform1f(shader_b,V.bias_param)
 
     # DRAW THE IMAGE
-    drawImage()
+    textureID=13
+    for tile in D.imageBitmapTiles:
+       drawImage(textureID,tile[3],tile[4],tile[1],tile[2])
+       textureID=textureID+1
 
 
     # DONT USE THE SHADER FOR RENDERING THE HUD
@@ -728,9 +739,9 @@ def display( window ):
 
 
 
-def setupTexture(imageBitmap, ix,iy,nch):
+def setupTexture(imageBitmap, ix,iy,nch, textureID=13):
     """texture environment setup"""
-    glBindTexture(GL_TEXTURE_2D, 13)
+    glBindTexture(GL_TEXTURE_2D, textureID)
     glPixelStorei(GL_UNPACK_ALIGNMENT,1)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -753,6 +764,13 @@ def setupTexture(imageBitmap, ix,iy,nch):
        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB32F, ix, iy, 0,
          GL_RGB, GL_FLOAT, imageBitmap)
 
+
+
+def setupTexturesFromImageTiles(imageBitmapTiles, ix,iy,nch, textureID=13):
+    """texture environment setup"""
+    for tile in imageBitmapTiles:
+       setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
+       textureID=textureID+1
 
 
 
@@ -815,7 +833,9 @@ def main():
 
     tic()
     # read the image
-    D.imageBitmap,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
+    # Usually this is done with change_image, but this is a special case
+    # as we must find out the image size before creating the window 
+    D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
     D.filename = I1
     V.data_min, V.data_max=  D.v_min,D.v_max 
     V.reset_scale_bias()
@@ -867,7 +887,7 @@ def main():
 
     # setup texture 
     tic()
-    setupTexture(D.imageBitmap,D.w,D.h,D.nch)
+    setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
     glFinish()  # Flush and wait
     toc('texture setup')
 
