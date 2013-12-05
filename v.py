@@ -218,7 +218,10 @@ class ViewportState:
 
    ## pan and zoom functions
    def zoom_update(V, offset, mx=-1, my=-1):
-      V.zoom_param = V.zoom_param + offset/10.
+      newzoom = V.zoom_param + offset/10.
+      if newzoom >= 0.001 :       # prevent image inversion
+         V.zoom_param = newzoom
+
       if mx>=0 and my>=0:
          V.dx = V.dx 
          V.dy = V.dy 
