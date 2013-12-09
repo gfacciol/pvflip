@@ -121,7 +121,7 @@ def read_tiled_buffers(filename):
          N=ww*hh*out_nch
          # generate the interlan memory to copy the tile
          data = ctypes.ARRAY(ctypes.c_float, N)()
-         libiio.copy_tile(ptr, w, h, nch, data, x, y, ww, hh, out_nch)  # only allow 3 channels
+         libiio.copy_tile(ptr, w, h, nch, data, x, y, ww, hh, out_nch)  # only allow up to 4 channels
          tiles.append( (data, x, y, ww,hh, out_nch) ) 
          
 
