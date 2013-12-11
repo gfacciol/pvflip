@@ -874,9 +874,9 @@ def main():
     glut.glutInit()
 
 
-
     # Create a windowed mode window and its OpenGL context
     window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
+
 
     if not window:
         glfw.glfwTerminate()
@@ -891,6 +891,7 @@ def main():
     glfw.glfwSetScrollCallback(window, mouseWheel_callback)
     glfw.glfwSetCursorPosCallback(window, mouseMotion_callback)
     glfw.glfwSetFramebufferSizeCallback(window, resize_callback)
+    glfw.glfwSetWindowRefreshCallback(window,display)
 #    glfw.glfwSetCharCallback (window, unicode_char_callback)
     toc('glfw init')
 
