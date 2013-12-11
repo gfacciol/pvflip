@@ -180,6 +180,7 @@ class ViewportState:
 
    # VISUALIZE FLOW
    TOGGLE_FLOW_COLORS = 0
+   TOGGLE_AUTOMATIC_RANGE = 0
 
 
 
@@ -210,6 +211,11 @@ class ViewportState:
       V.v_radius=(V.data_max-V.data_min)/2.0
       V.update_scale_and_bias()
 
+
+   def reset_range_to_8bits(V): 
+      V.v_center = 127.5
+      V.v_radius = 127.5
+      V.update_scale_and_bias()
 
 
    def compute_image_coordinates(self,mx,my):
@@ -500,6 +506,19 @@ def keyboard_callback(window, key, scancode, action, mods):
        V.radius_update(-1)
     if key==glfw.GLFW_KEY_C and action==glfw.GLFW_PRESS:
        V.reset_scale_bias()
+       if V.shift_is_pressed:
+         V.TOGGLE_AUTOMATIC_RANGE = (V.TOGGLE_AUTOMATIC_RANGE + 1) % 2
+         if V.TOGGLE_AUTOMATIC_RANGE: 
+            print "automatic range enabled"
+         else: 
+            print "automatic range disabled"
+         
+
+    if key==glfw.GLFW_KEY_B and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT): 
+       V.reset_range_to_8bits()
+       V.TOGGLE_AUTOMATIC_RANGE = 0
+       print "range set to [0,255]"
+
 
 
     # zoom
@@ -513,6 +532,12 @@ def keyboard_callback(window, key, scancode, action, mods):
     if key==glfw.GLFW_KEY_R and action==glfw.GLFW_PRESS:
        V.reset_zoom()
        V.reset_scale_bias()
+
+    # reset visualization
+    if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 2
+       V.redisp = 1
+
 
     # reset visualization
     if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
@@ -536,10 +561,12 @@ def keyboard_callback(window, key, scancode, action, mods):
     new_current_image_idx = current_image_idx
     if key==glfw.GLFW_KEY_SPACE and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
        new_current_image_idx = change_image(current_image_idx+1)
+       if V.TOGGLE_AUTOMATIC_RANGE: V.reset_scale_bias()
        V.mute_keyboard=1
 
     if key==glfw.GLFW_KEY_BACKSPACE and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
        new_current_image_idx = change_image(current_image_idx-1)
+       if V.TOGGLE_AUTOMATIC_RANGE: V.reset_scale_bias()
        V.mute_keyboard=1
 
     if not new_current_image_idx == current_image_idx:
@@ -559,9 +586,11 @@ def keyboard_callback(window, key, scancode, action, mods):
        print "arrows: pan image"
        print "P,M   : zoom image in/out"
        print "Z     : zoom modifier for the mouse wheel"
-       print "C     : reset contrast"
-       print "D,E   : contrast scale up/down"
-       print "R     : reset visualization: zoom,pan,contrast"
+       print "C     : reset intensity range"
+       print "shiftC: automatically reset range"
+       print "B     : set range to [0:255]"
+       print "D,E   : range scale up/down"
+       print "R     : reset visualization: zoom,pan,range"
        print "1     : toggle optic flow coloring"
        print "mouse wheel: contrast center"
        print "mouse wheel+shift: contrast scale"
