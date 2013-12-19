@@ -1,3 +1,7 @@
+# Primitie python wrapper for iio
+# Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
+
+
 import os,sys,ctypes
 
 #if sys.platform.startswith('win'):

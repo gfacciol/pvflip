@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
+############################################################################
 
 #from distutils.core import setup
 from distutils.core import setup, Extension

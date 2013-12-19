@@ -1,0 +1,21 @@
+As in the movies we credit everybody for their contribution.
+
+
+* Developers
+Gabriele Facciolo
+
+* Testing, ideas and suggestions
+Carlo de Franchis
+Enric Meinhardt
+Rafael Grompone Von Gioi
+
+* Indirect contributions (libraries, wrappers, blog posts)
+https://github.com/mnhrdt/iio/
+https://github.com/rougier/pyglfw
+htte://www.seethroughskin.com/blog/?p=771
+http://python-opengl-examples.blogspot.com.es/
+http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
+http://www.cityinabottle.org/nodebox/shader/
+http://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
+http://docs.scipy.org/doc/numpy/reference/generated/numpy.frombuffer.html
+http://cimg.sourceforge.net/ (not used anymore)

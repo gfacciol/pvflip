@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
+############################################################################
 #
 # v03 : faster image load with piio.read_buffer avoids passing trough numpy
 #       fragment shader color manipulation (optic flow)
@@ -845,25 +847,25 @@ def toc(name=''):
 def main():
 
     # verify input
-    if len(sys.argv) > 1:
-       I1 = sys.argv[1]
-    else:
-       # check if the standard input is a tty
+    if len(sys.argv) == 1:
+       # check if the standard input is a tty (not a pipe)
        if sys.stdin.isatty():
           print "Incorrect syntax, use:"
           print '  > ' + sys.argv[0] + " image.png"
-          # show default image if exists
-          I1 = '/Users/facciolo/uiskentuie_standing_stone2.png'
+
+          # show a default image if exists
+          sys.argv.append('/Users/facciolo/uiskentuie_standing_stone.png')
           try:
              from os import stat
-             stat(I1)
+             stat(sys.argv[1])
           except OSError:
              exit(1)
-       # otherwise use stdin as input (it should be a pipe)
+       # otherwise use stdin as input (because it should be a pipe)
        else:
-          I1 = '-'
+          sys.argv.append('-')
 
-
+    # pick the first image
+    I1 = sys.argv[1]
 
 
     # globals

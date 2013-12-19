@@ -19,7 +19,7 @@
 // See file "iio.txt" for slightly more detailed documentation, and "iio.h" for
 // the API
 //
-
+// Copyright (c) Enric Meinhardt-Llopis 2012
 
 // #includes {{{1
 
