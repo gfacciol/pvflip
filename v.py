@@ -487,13 +487,13 @@ def mouseWheel_callback(window, xoffset, yoffset):
 
       # zoom
       if V.alt_is_pressed:
-         V.zoom_update(yoffset/10.,curr_x,curr_y)
+         V.zoom_update(yoffset/1.0,curr_x,curr_y)
       # scale
       elif V.shift_is_pressed:
-         V.radius_update(yoffset/10.)
+         V.radius_update(yoffset/1.0)
       # bias
       else: # nothing pressed
-         V.center_update(yoffset/10.)
+         V.center_update(yoffset/1.0)
 
 
 
