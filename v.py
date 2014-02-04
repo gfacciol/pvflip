@@ -183,6 +183,7 @@ class ViewportState:
    # VISUALIZE FLOW
    TOGGLE_FLOW_COLORS = 0
    TOGGLE_AUTOMATIC_RANGE = 0
+   TOGGLE_FIT_TO_WINDOW_SIZE = 0
 
 
 
@@ -242,6 +243,12 @@ class ViewportState:
          V.dx = V.dx 
          V.dy = V.dy 
          V.zoom_center = (V.winx/2,V.winy/2)
+
+      # disable FIT TO WINDOW
+      if V.TOGGLE_FIT_TO_WINDOW_SIZE:
+         V.TOGGLE_FIT_TO_WINDOW_SIZE=0
+         print "DISABLE: fit image to window"
+
       V.redisp=1
 
    def reset_zoom(V):
@@ -263,6 +270,16 @@ class ViewportState:
          V.redisp=1
 
 
+   def update_zoom_position_to_fit_window(V):
+      global D
+      from math import floor
+      V.zoom_center =(V.winx/2,V.winy/2)
+      V.zoom_param  = min(V.winx*1.0/D.w,V.winy*1.0/D.h)
+      # undo the translation induced by the zoom_center and do the translation
+      V.dx,V.dy= (V.zoom_center[0]/ V.zoom_param - V.zoom_center[0]) - floor((V.winx/V.zoom_param - D.w)/2.0) , (V.zoom_center[1]/ V.zoom_param - V.zoom_center[1]) - floor((V.winy/V.zoom_param - D.h)/2.0)
+      V.dragdx,V.dragdy=0,0
+      V.window_has_been_resized_by_the_user=1
+      V.redisp=1
 
 
 #### IMAGE STATE
@@ -529,6 +546,18 @@ def keyboard_callback(window, key, scancode, action, mods):
     if key==glfw.GLFW_KEY_M and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
        V.zoom_update(-1)
 
+    # fit image to window
+    if key==glfw.GLFW_KEY_F and action==glfw.GLFW_PRESS:
+       V.TOGGLE_FIT_TO_WINDOW_SIZE = (V.TOGGLE_FIT_TO_WINDOW_SIZE + 1) % 2
+       if V.TOGGLE_FIT_TO_WINDOW_SIZE:
+          print "ENABLE: fit image to window"
+          V.update_zoom_position_to_fit_window()
+          V.redisp = 1 
+       else:
+          print "DISABLE: fit image to window"
+          #V.reset_zoom()
+          V.redisp = 1 
+
 
     # reset visualization
     if key==glfw.GLFW_KEY_R and action==glfw.GLFW_PRESS:
@@ -588,6 +617,7 @@ def keyboard_callback(window, key, scancode, action, mods):
        print "arrows: pan image"
        print "P,M   : zoom image in/out"
        print "Z     : zoom modifier for the mouse wheel"
+       print "F     : fit image to window size"
        print "C     : reset intensity range"
        print "shiftC: automatically reset range"
        print "B     : set range to [0:255]"
@@ -1001,6 +1031,8 @@ def main():
               # I know it's not been the user so I reset the variable to 0
               V.window_has_been_resized_by_the_user=0
               V.resize = 0
+
+           if V.TOGGLE_FIT_TO_WINDOW_SIZE: V.update_zoom_position_to_fit_window()
 
            V.redisp = display(window)
 
