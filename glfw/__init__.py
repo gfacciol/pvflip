@@ -428,8 +428,8 @@ glfwGetKey                     = _glfw.glfwGetKey
 glfwGetMouseButton             = _glfw.glfwGetMouseButton
 glfwGetCursorPos               = _glfw.glfwGetCursorPos
 glfwSetCursorPos               = _glfw.glfwSetCursorPos
-# glfwSetKeyCallback             = _glfw.glfwSetKeyCallback
-# glfwSetCharCallback            = _glfw.glfwSetCharCallback
+glfwSetKeyCallback             = _glfw.glfwSetKeyCallback
+glfwSetCharCallback            = _glfw.glfwSetCharCallback
 # glfwSetMouseButtonCallback     = _glfw.glfwSetMouseButtonCallback
 # glfwSetCursorPosCallback       = _glfw.glfwSetCursorPosCallback
 # glfwSetCursorEnterCallback     = _glfw.glfwSetCursorEnterCallback
@@ -529,7 +529,7 @@ def glfwGetFramebufferSize(window):
 
 def glfwGetMonitors():
     count = c_int(0)
-    _glfw.glfwGetMonitors.restype = POINTER(POINTER(GLFWmonitort))
+    _glfw.glfwGetMonitors.restype = POINTER(POINTER(GLFWmonitor))
     c_monitors = _glfw.glfwGetMonitors( byref(count) )
     return [c_monitors[i] for i in range(count.value)]
 
@@ -559,7 +559,7 @@ def glfwGetMonitorPhysicalSize(monitor):
 
 def glfwGetVideoMode(monitor):
     _glfw.glfwGetVideoMode.restype = POINTER(GLFWvidmode)
-    c_mode = _glfw.glfwGetVideoModes(monitor)
+    c_modes = _glfw.glfwGetVideoModes(monitor)
     return (c_modes.width,
             c_modes.height,
             c_modes.redBits,
