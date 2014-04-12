@@ -388,6 +388,7 @@ x0=0; y0=0; w0=0; h0=0; b0state=''; b1state=''
 
 
 def mouseMotion_callback(window, x,y):
+    import math 
     global V,D
     global x0,y0,w0,h0,b0state,b1state
 
@@ -404,7 +405,7 @@ def mouseMotion_callback(window, x,y):
     # adjust bias usign concrete pixel
     if V.shift_is_pressed and not V.mute_sweep:
        centerval = D.get_image_point(int(tx),int(ty))
-       if not centerval==None:
+       if not (centerval==None or math.isnan(sum(centerval)) or math.isinf(sum(centerval))):
           V.center_update_value(sum(centerval)/len(centerval))
           V.mute_sweep=1
 
