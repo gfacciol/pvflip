@@ -1,21 +1,22 @@
-# Installation
-
-    > python setup.py install 
-
-
-compiles and installs the following python modules: pyglfw3m, piio
-
-
-# Execution
+# Running the program, no need for system-wise installation:
 
     > v.py image_file
 
+Note: It will compile the pyglfw and piio modules during the first execution, 
+leaving the libraries in the directory of v.py.
 
-# Local Installation
+
+# Installation (optional)
+
+    > python setup.py install 
+
+compiles and installs the following python modules: pyglfw3, piio
+
+# Local Installation (optional) 
 
     > python setup.py install  --prefix=$HOME/local
 
-Remember to set:
+For the intallations remember to set:
 
     export PYTHONPATH=$PYTHONPATH:$HOME/local/lib/pythonXXX/site-packages
 

@@ -25,11 +25,11 @@ elif sys.platform == "darwin":
     if not os.path.exists("glfw/libglfw.dylib") and is_build:
         # let's cross our fingers and hope the build goes smooth (without user intervention)
 
-        if not os.path.exists('build'):
-           os.mkdir('build')
-        os.chdir('build')
+        if not os.path.exists('glfw/build'):
+           os.mkdir('glfw/build')
+        os.chdir('glfw/build')
         
-        if os.system("cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_UNIVERSAL=ON ../glfw-3.0.3") :
+        if os.system("cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_UNIVERSAL=ON ../glfw_src") :
             print("Error while building libglfw.dylib")
             sys.exit(1)
         if os.system("make") :
@@ -37,19 +37,21 @@ elif sys.platform == "darwin":
             sys.exit(1)
             
         os.chdir("..")
+        os.chdir("..")
             
-    shutil.copyfile("build/src/libglfw.dylib", "glfw/libglfw.dylib")
+        shutil.copyfile("glfw/build/src/libglfw.dylib", "glfw/libglfw.dylib")
+        os.system("rm -fr glfw/build")
         
 else:
     package_data = {"glfw": ["libglfw.so"]}
     
     if not os.path.exists("glfw/libglfw.so") and is_build:
 
-        if not os.path.exists('build'):
-           os.mkdir('build')
-        os.chdir('build')
+        if not os.path.exists('glfw/build'):
+           os.mkdir('glfw/build')
+        os.chdir('glfw/build')
         
-        if os.system("cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw-3.0.3") :
+        if os.system("cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src") :
             print("Error while building libglfw.so")
             sys.exit(1)
         if os.system("make") :
@@ -57,8 +59,10 @@ else:
             sys.exit(1)
             
         os.chdir("..")
+        os.chdir("..")
         
-    shutil.copyfile("build/src/libglfw.so", "glfw/libglfw.so")
+        shutil.copyfile("glfw/build/src/libglfw.so", "glfw/libglfw.so")
+        os.system("rm -fr glfw/build")
 
 
 iiomodule = Extension('piio.libiio',  
