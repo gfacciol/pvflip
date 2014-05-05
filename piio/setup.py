@@ -109,7 +109,7 @@ class build_iio(distutils.cmd.Command):
             linker_preargs += ['-mrtd'] 
             # remove link against msvcr*. this is a bit ugly maybe.. :)
             compiler.dll_libraries = [lib for lib in compiler.dll_libraries if not lib.startswith("msvcr")]
-        compiler.link(cc.CCompiler.SHARED_LIBRARY, objs, libname, output_dir = './', extra_preargs=linker_preargs)
+        compiler.link(cc.CCompiler.SHARED_LIBRARY, objs, libname, output_dir = './', extra_postargs=linker_preargs)
         
     def run(self):
         self.compile()
