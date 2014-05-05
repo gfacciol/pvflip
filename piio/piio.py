@@ -12,9 +12,18 @@ import os,sys,ctypes
 #   lib_ext = '.so'
 #gcc -std=c99 iio.c -shared -o iio.dylib -lpng -ltiff -ljpeg
 
+
 lib_ext = '.so'
 here  = os.path.dirname(__file__)
 libiiofile= os.path.join(here, 'libiio'+lib_ext)
+
+### HACK TO BUILD libiio ON THE FLY
+try:
+   os.stat(libiiofile)
+except OSError:
+   print 'BUILDING PIIO...'
+   os.system('cd %s; python setup.py build'%here)
+
 libiio   = ctypes.CDLL(libiiofile)
 del libiiofile, here, lib_ext
 
