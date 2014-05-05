@@ -46,7 +46,18 @@ else:
    lib_ext = '.so'
 here  = os.path.dirname(__file__)
 libfile  = os.path.join(here, 'libglfw'+lib_ext)
+
 if os.path.exists(libfile):
+   _glfw_file = libfile
+else:
+   print 'BUILDING GLFW...'
+   os.system('mkdir -p %s/build; cd %s/build; cmake  -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw%s %s '%(here,here, lib_ext, here))
+   print 'CLEANING BUILD...'
+   if os.path.exists(libfile):
+      os.system('rm -fr %s/build '%(here))
+   else:
+      print "SORRY THE GLFW BUILD FAILED SOMEHOW, I WAS LOOKING FOR %d... LEAVING THE BUILD DIRECTORY..."%(libfile)
+
    _glfw_file = libfile
 
 # First if there is an environment variable pointing to the library
