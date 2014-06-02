@@ -221,28 +221,35 @@ class ViewportState:
       V.update_scale_and_bias()
 
 
+   #def compute_image_coordinates(self,mx,my):
+   #   x = (mx - self.zoom_center[0])/self.zoom_param + self.dx+self.zoom_center[0]
+   #   y = (my - self.zoom_center[1])/self.zoom_param + self.dy+self.zoom_center[1]
+   #   return x,y
    def compute_image_coordinates(self,mx,my):
-      x = (mx - self.zoom_center[0])/self.zoom_param + self.dx+self.zoom_center[0]
-      y = (my - self.zoom_center[1])/self.zoom_param + self.dy+self.zoom_center[1]
+      x = mx/self.zoom_param + self.dx
+      y = my/self.zoom_param + self.dy
       return x,y
 
 
 
    ## pan and zoom functions
    def zoom_update(V, offset, mx=-1, my=-1):
-      newzoom = V.zoom_param + offset/10.
+      tx,ty = V.compute_image_coordinates(mx, my)
+      #newzoom = V.zoom_param + offset/10.
+      print mx,my
+      factor = 1.3
+      if (offset > 0):
+          factor = 1/factor
+      newzoom = V.zoom_param * factor
       if newzoom >= 0.001 :       # prevent image inversion
          V.zoom_param = newzoom
 
-      if mx>=0 and my>=0:
-         V.dx = V.dx 
-         V.dy = V.dy 
-         #V.zoom_center = (mx,my)
-         V.zoom_center = (V.winx/2,V.winy/2)
-      else:
-         V.dx = V.dx 
-         V.dy = V.dy 
-         V.zoom_center = (V.winx/2,V.winy/2)
+      if mx<0 or my<0 or mx >= V.winx or my >= V.winy:
+          mx = V.winx/2
+          my = V.winy/2
+
+      V.dx = tx - mx/V.zoom_param
+      V.dy = ty - my/V.zoom_param
 
       # disable FIT TO WINDOW
       if V.TOGGLE_FIT_TO_WINDOW_SIZE:
@@ -691,9 +698,7 @@ def display( window ):
        glBindTexture (GL_TEXTURE_2D, textureID); #/* bind to our texture, has id of 13 */
    
        # third operation
-       glTranslate(V.zoom_center[0],V.zoom_center[1],0)
        glScalef(V.zoom_param, V.zoom_param,1)
-       glTranslate(-V.zoom_center[0],-V.zoom_center[1],0)
 
        # second operation
        glTranslate(-V.dx,-V.dy,0)
