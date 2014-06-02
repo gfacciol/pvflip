@@ -11,10 +11,17 @@
 # v-1 : no event mutex
 
 from OpenGL.GL import *
-#from OpenGL.GLU import *
 from OpenGL.GL.shaders import *
 import glfw
 import sys
+
+### SYSTEM SPECIFIC STUFF
+import platform
+if platform.system() == 'Darwin':
+   GLOBAL_WHEEL_SCALING = 0.1
+else:
+   GLOBAL_WHEEL_SCALING = 1.0
+
 
 oflow_shader = """
     vec4 hsvtorgb(vec4 colo)
@@ -140,7 +147,6 @@ rb_shader = """
 class ViewportState:
    winx,winy=0,0
    zoom_param  = 1
-   zoom_center = (0,0)
    scale_param = 1.0      ## TODO internal variables should not be here
    bias_param  = 0
 
@@ -221,10 +227,6 @@ class ViewportState:
       V.update_scale_and_bias()
 
 
-   #def compute_image_coordinates(self,mx,my):
-   #   x = (mx - self.zoom_center[0])/self.zoom_param + self.dx+self.zoom_center[0]
-   #   y = (my - self.zoom_center[1])/self.zoom_param + self.dy+self.zoom_center[1]
-   #   return x,y
    def compute_image_coordinates(self,mx,my):
       x = mx/self.zoom_param + self.dx
       y = my/self.zoom_param + self.dy
@@ -234,19 +236,22 @@ class ViewportState:
 
    ## pan and zoom functions
    def zoom_update(V, offset, mx=-1, my=-1):
-      tx,ty = V.compute_image_coordinates(mx, my)
-      #newzoom = V.zoom_param + offset/10.
-      print mx,my
-      factor = 1.3
-      if (offset > 0):
-          factor = 1/factor
-      newzoom = V.zoom_param * factor
-      if newzoom >= 0.001 :       # prevent image inversion
-         V.zoom_param = newzoom
 
       if mx<0 or my<0 or mx >= V.winx or my >= V.winy:
           mx = V.winx/2
           my = V.winy/2
+
+      tx,ty = V.compute_image_coordinates(mx, my)
+      
+      factor = 1.0+(1.3-1.0)*GLOBAL_WHEEL_SCALING*abs(offset);
+      if (offset > 0):
+          factor = 1.0/factor
+
+      #newzoom = V.zoom_param + offset/10. ## old
+      newzoom = V.zoom_param * factor
+      if newzoom >= 0.001 :       # prevent image inversion
+         V.zoom_param = newzoom
+
 
       V.dx = tx - mx/V.zoom_param
       V.dy = ty - my/V.zoom_param
@@ -261,7 +266,6 @@ class ViewportState:
    def reset_zoom(V):
       V.dx,V.dy=0,0
       V.zoom_param  = 1
-      V.zoom_center = (0,0)
       V.redisp=1
       V.dragdx,V.dragdy=0,0
 
@@ -280,10 +284,8 @@ class ViewportState:
    def update_zoom_position_to_fit_window(V):
       global D
       from math import floor
-      V.zoom_center =(V.winx/2,V.winy/2)
       V.zoom_param  = min(V.winx*1.0/D.w,V.winy*1.0/D.h)
-      # undo the translation induced by the zoom_center and do the translation
-      V.dx,V.dy= (V.zoom_center[0]/ V.zoom_param - V.zoom_center[0]) - floor((V.winx/V.zoom_param - D.w)/2.0) , (V.zoom_center[1]/ V.zoom_param - V.zoom_center[1]) - floor((V.winy/V.zoom_param - D.h)/2.0)
+      V.dx,V.dy= -floor((V.winx/V.zoom_param - D.w)/2.0) ,  - floor((V.winy/V.zoom_param - D.h)/2.0)
       V.dragdx,V.dragdy=0,0
       V.window_has_been_resized_by_the_user=1
       V.redisp=1
@@ -495,13 +497,13 @@ def mouseWheel_callback(window, xoffset, yoffset):
 
       # zoom
       if V.alt_is_pressed:
-         V.zoom_update(yoffset/1.0,curr_x,curr_y)
+         V.zoom_update(yoffset*GLOBAL_WHEEL_SCALING,curr_x,curr_y)
       # scale
       elif V.shift_is_pressed:
-         V.radius_update(yoffset/1.0)
+         V.radius_update(yoffset*GLOBAL_WHEEL_SCALING)
       # bias
       else: # nothing pressed
-         V.center_update(yoffset/1.0)
+         V.center_update(yoffset*GLOBAL_WHEEL_SCALING)
 
 
 
@@ -784,9 +786,7 @@ def display( window ):
        # compose transformation
        glPushMatrix()
        # first transformation
-       glTranslate(V.zoom_center[0],V.zoom_center[1],0)
        glScalef(V.zoom_param, V.zoom_param,1)
-       glTranslate(-V.zoom_center[0],-V.zoom_center[1],0)
        # second transformation
        glTranslate(-V.dx,-V.dy,0)
 
