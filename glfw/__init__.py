@@ -40,12 +40,18 @@ _glfw_file = None
 # ADDED FOR PYTHON PACKAGE
 if sys.platform.startswith('win'):
    lib_ext = '.dll'
+   if sys.platform == 'win64':
+      lib_basename = 'glfw-3.0.4.bin.WIN64/lib-mingw/glfw3'
+   else:
+      lib_basename = 'glfw-3.0.4.bin.WIN32/lib-mingw/glfw3'
 elif sys.platform == 'darwin':
    lib_ext = '.dylib'
+   lib_basename = 'libglfw'
 else:
    lib_ext = '.so'
+   lib_basename = 'libglfw'
 here  = os.path.dirname(__file__)
-libfile  = os.path.join(here, 'libglfw'+lib_ext)
+libfile  = os.path.join(here, lib_basename+lib_ext)
 
 if os.path.exists(libfile):
    _glfw_file = libfile

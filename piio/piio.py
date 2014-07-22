@@ -15,7 +15,19 @@ import os,sys,ctypes
 
 lib_ext = '.so'
 here  = os.path.dirname(__file__)
-libiiofile= os.path.join(here, 'libiio'+lib_ext)
+
+if sys.platform.startswith('win'): 
+   lib_ext = '.dll'
+   if sys.platform == 'win64':   #precompiled windows
+      lib_basename = 'WIN64/iio'
+   else:      
+      lib_basename = 'WIN32/iio'
+else:      # linux and osx
+   lib_basename = 'libiio'
+   lib_ext = '.so'
+
+libiiofile= os.path.join(here, lib_basename+lib_ext)
+
 
 ### HACK TO BUILD libiio ON THE FLY
 try:

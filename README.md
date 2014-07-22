@@ -29,7 +29,7 @@ For the intallations remember to set:
 # Linux dependencies (known):
     x11proto-xf86vidmode-dev
     xorg-dev libglu1-mesa-dev
-    python-opengl
+    python-opengl cmake 
 
 
 # Optional dependency (only for some piio functions):
