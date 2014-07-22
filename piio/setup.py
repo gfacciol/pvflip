@@ -76,7 +76,8 @@ class build_iio(distutils.cmd.Command):
             # Because -mrtd and -fomit-frame-pointer (which is included in -O)
             # gives problem with function pointer to the sdtlib free function
             # we also have to use -fno-omit-frame-pointer
-            compiler_preargs += ['-mrtd', '-O3', '-shared', '-fno-omit-frame-pointer'] 
+           # compiler_preargs += ['-mrtd', '-O3', '-shared', '-fno-omit-frame-pointer'] 
+            compiler_preargs += ['-O3', '-static'] 
         
         if arch == 64 and platform.system() in ('Windows', 'Microsoft'):
             compiler_preargs += ['-m64']
@@ -106,7 +107,7 @@ class build_iio(distutils.cmd.Command):
             linker_preargs += ['-fPIC']
         if platform.system() in ('Windows', 'Microsoft'):
             # link with stddecl instead of cdecl
-            linker_preargs += ['-mrtd'] 
+         #   linker_preargs += ['-mrtd'] 
             # remove link against msvcr*. this is a bit ugly maybe.. :)
             compiler.dll_libraries = [lib for lib in compiler.dll_libraries if not lib.startswith("msvcr")]
         compiler.link(cc.CCompiler.SHARED_LIBRARY, objs, libname, output_dir = './', extra_postargs=linker_preargs)
