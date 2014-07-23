@@ -16,7 +16,7 @@ import glfw
 import sys
 
 ### SYSTEM SPECIFIC STUFF
-import platform
+import platform 
 if platform.system() == 'Darwin':
    GLOBAL_WHEEL_SCALING = 0.1
 else:
@@ -177,6 +177,9 @@ class ViewportState:
    mute_wheel=0
    mute_wheel_buffer=[0,0] 
 
+   # split screen
+   display_split = 0
+
    # HUD info
    display_hud = 1
    txt_val='0'
@@ -326,6 +329,7 @@ class DataBackend:
 
 V = ViewportState()
 D = ImageState()
+Dsplit = D
 DD = {}
 current_image_idx=0
 
@@ -356,6 +360,7 @@ def change_image(new_idx):
 
 
    if new_idx not in DD:
+      cleanTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       D = DD[new_idx] = ImageState()
 
       tic()
@@ -375,6 +380,7 @@ def change_image(new_idx):
            DD.pop((new_idx+BUFF) % NUM_FILES)
 
    else:
+      cleanTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       D = DD[new_idx]
 
       # setup texture 
@@ -620,6 +626,16 @@ def keyboard_callback(window, key, scancode, action, mods):
        V.display_hud=(V.display_hud+1)%2
        V.redisp=1
 
+    # split screen
+    if key==glfw.GLFW_KEY_S   and action==glfw.GLFW_PRESS:
+       V.display_split=(V.display_split+1)%2
+       global D, Dsplit
+       Dsplit = D
+       # HACK to load the split texture
+       V.window_has_been_resized_by_the_user=1
+       setupTexturesFromImageTiles(Dsplit.imageBitmapTiles,Dsplit.w,Dsplit.h,Dsplit.nch,1400)
+       V.redisp=1
+
     # help
     if key==glfw.GLFW_KEY_H   and action==glfw.GLFW_PRESS:
        print "Q     : quit"
@@ -653,7 +669,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
 def resize_callback(window, width, height):
    global V
-   glViewport(0, 0, width, height)
+   glViewport(0, 0, width/2, height)
    V.winx,V.winy=width,height
    V.redisp=1
    # this callback is generated weather the application or the user has resized the window 
@@ -673,25 +689,6 @@ def display( window ):
     """Render scene geometry"""
 
     global D,V
-
-    glClear(GL_COLOR_BUFFER_BIT);
-
-#    glDisable( GL_LIGHTING) # context lights by default
-
-    # this is the effective size of the current window
-    # ideally winx,winy should be equal to D.w,D.h BUT if the 
-    # image is larger than the screen glutReshapeWindow(D.w,D.h) 
-    # will fail and winx,winy will be truncated to the size of the screen
-#    winx, winy= glfw.glfwGetFramebufferSize(window)
-    winx, winy= glfw.glfwGetWindowSize(window)
-    V.winx,V.winy=winx,winy
-
-    glViewport(0, 0, winx, winy);
-
-    # setup camera
-    glMatrixMode (GL_PROJECTION);
-    glLoadIdentity ();
-    glOrtho (0, winx, winy, 0, -1, 1);
 
 
     def drawImage(textureID,w,h,x0=0,y0=0):
@@ -739,75 +736,104 @@ def display( window ):
              glut.glutBitmapCharacter(font_style, ord(i))
     
     
+    glClear(GL_COLOR_BUFFER_BIT);
 
-    ## USE THE SHADER FOR RENDERING THE IMAGE
-    global program, program_rgba, program_hsv, program_rb, program_oflow
-    if D.nch == 2 :
-       if V.TOGGLE_FLOW_COLORS:
-          program  = program_oflow
-       else:
-          program  = program_rb
+#    glDisable( GL_LIGHTING) # context lights by default
+
+    # this is the effective size of the current window
+    # ideally winx,winy should be equal to D.w,D.h BUT if the 
+    # image is larger than the screen glutReshapeWindow(D.w,D.h) 
+    # will fail and winx,winy will be truncated to the size of the screen
+#    winx, winy= glfw.glfwGetFramebufferSize(window)
+    winx, winy= glfw.glfwGetWindowSize(window)
+    V.winx,V.winy=winx,winy
+
+
+    ### HACK TO STORE THE TEXTURES FAR AWAY
+    if V.display_split:
+       ports = ((D,0,0,winx/2,winy,13),(Dsplit,winx/2,0,winx/2,winy,1400))
     else:
-       if V.TOGGLE_FLOW_COLORS:
-          program  = program_hsv
+       ports = ((D,0,0,winx,winy,13),)
+
+
+    ### LOOP OVER THE PORTS
+    for myD,startx,starty,width,height,texId in ports:
+
+       glViewport(startx, starty, width, height);
+  
+       # setup camera
+       glMatrixMode (GL_PROJECTION);
+       glLoadIdentity ();
+       glOrtho (0, width, height, 0, -1, 1);
+   
+       ## USE THE SHADER FOR RENDERING THE IMAGE
+       global program, program_rgba, program_hsv, program_rb, program_oflow
+       if myD.nch == 2 :
+          if V.TOGGLE_FLOW_COLORS:
+             program  = program_oflow
+          else:
+             program  = program_rb
        else:
-          program  = program_rgba
-
-    glUseProgram(program)   
-    # set the values of the shader uniform variables (global)
-    shader_a= glGetUniformLocation(program, "shader_a")
-    glUniform1f(shader_a,V.scale_param)
-    shader_b= glGetUniformLocation(program, "shader_b")
-    glUniform1f(shader_b,V.bias_param)
-
-    # DRAW THE IMAGE
-    textureID=13
-    for tile in D.imageBitmapTiles:
-       drawImage(textureID,tile[3],tile[4],tile[1],tile[2])
-       textureID=textureID+1
-
-
-    # DONT USE THE SHADER FOR RENDERING THE HUD
-    glUseProgram(0)   
-
-    if V.display_hud:
-       a=D.v_max-D.v_min
-       b=D.v_min
-       drawHud('%s\n%s\n%s\n%.3f %.3f\n%.3f %.3f'%(D.filename, V.txt_pos,V.txt_val,V.v_center,V.v_radius,D.v_min,D.v_max))
-
-
-    # show RECTANGULAR region
-    global x0,y0,w0,h0,b0state,b1state
-    if(b1state=='pressed'):
-
-       # real image coordinates
-       xx0,yy0,xx1,yy1 = int(x0),int(y0),int(x0+w0),int(y0+h0)
-
-       # compose transformation
-       glPushMatrix()
-       # first transformation
-       glScalef(V.zoom_param, V.zoom_param,1)
-       # second transformation
-       glTranslate(-V.dx,-V.dy,0)
-
-       # draw
-       glEnable (GL_BLEND)
-       glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-       glBegin( GL_QUADS );
-       glColor4f(1.0, 0.0, 0.0,.6);
-       glVertex3d(xx0  ,yy0   ,-0.1);
-       glColor4f(0.0, 1.0, 1.0,.3);
-       glVertex3d(xx1,yy0   ,-0.1);
-       glColor4f(0.0, 0.0, 1.0,.6);
-       glVertex3d(xx1,yy1,-0.1);
-       glColor4f(0.0, 1.0, 0.0,.3);
-       glVertex3d(xx0  ,yy1,-0.1);
-       glEnd();
-
-       glDisable (GL_BLEND)
-
-       glPopMatrix()
+          if V.TOGGLE_FLOW_COLORS:
+             program  = program_hsv
+          else:
+             program  = program_rgba
+   
+       glUseProgram(program)   
+       # set the values of the shader uniform variables (global)
+       shader_a= glGetUniformLocation(program, "shader_a")
+       glUniform1f(shader_a,V.scale_param)
+       shader_b= glGetUniformLocation(program, "shader_b")
+       glUniform1f(shader_b,V.bias_param)
+   
+       # DRAW THE IMAGE
+       textureID=texId
+       for tile in myD.imageBitmapTiles:
+          drawImage(textureID,tile[3],tile[4],tile[1],tile[2])
+          textureID=textureID+1
+   
+   
+       # DONT USE THE SHADER FOR RENDERING THE HUD
+       glUseProgram(0)   
+   
+       if V.display_hud:
+          a=myD.v_max-myD.v_min
+          b=myD.v_min
+          drawHud('%s\n%s\n%s\n%.3f %.3f\n%.3f %.3f'%(myD.filename, V.txt_pos,V.txt_val,V.v_center,V.v_radius,myD.v_min,myD.v_max))
+   
+   
+       # show RECTANGULAR region
+       global x0,y0,w0,h0,b0state,b1state
+       if(b1state=='pressed'):
+   
+          # real image coordinates
+          xx0,yy0,xx1,yy1 = int(x0),int(y0),int(x0+w0),int(y0+h0)
+   
+          # compose transformation
+          glPushMatrix()
+          # first transformation
+          glScalef(V.zoom_param, V.zoom_param,1)
+          # second transformation
+          glTranslate(-V.dx,-V.dy,0)
+   
+          # draw
+          glEnable (GL_BLEND)
+          glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+   
+          glBegin( GL_QUADS );
+          glColor4f(1.0, 0.0, 0.0,.6);
+          glVertex3d(xx0  ,yy0   ,-0.1);
+          glColor4f(0.0, 1.0, 1.0,.3);
+          glVertex3d(xx1,yy0   ,-0.1);
+          glColor4f(0.0, 0.0, 1.0,.6);
+          glVertex3d(xx1,yy1,-0.1);
+          glColor4f(0.0, 1.0, 0.0,.3);
+          glVertex3d(xx0  ,yy1,-0.1);
+          glEnd();
+   
+          glDisable (GL_BLEND)
+   
+          glPopMatrix()
 
     return 0
 
@@ -849,6 +875,11 @@ def setupTexturesFromImageTiles(imageBitmapTiles, ix,iy,nch, textureID=13):
        setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
        textureID=textureID+1
 
+def cleanTexturesFromImageTiles(imageBitmapTiles, ix,iy,nch, textureID=13):
+    """texture environment setup"""
+    for tile in imageBitmapTiles:
+       glDeleteTextures(textureID)
+       textureID=textureID+1
 
 
 
