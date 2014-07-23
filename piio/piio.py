@@ -6,12 +6,12 @@ import os,sys,ctypes
 
 #if sys.platform.startswith('win'):
 #   lib_ext = '.dll'
+#gcc  -std=c99 -static-libgcc -shared -s iio.c freemem.c -I/usr/local/include -I/usr/include -o WIN32/iio.dll  /usr/local/lib/libpng.a /usr/local/lib/libjpeg.a  /usr/local/lib/libtiff.a /usr/local/lib/libz.a 
 #elif sys.platform == 'darwin':
 #   lib_ext = '.dylib'
 #else:
 #   lib_ext = '.so'
 #gcc -std=c99 iio.c -shared -o iio.dylib -lpng -ltiff -ljpeg
-
 
 lib_ext = '.so'
 here  = os.path.dirname(__file__)
