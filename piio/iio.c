@@ -264,19 +264,22 @@ static FILE *xfopen(const char *s, const char *p)
 
 	if (0 == strcmp("-", s))
 	{
-		if (0 == strcmp("w", p))
+		if (*p == 'w')
 			return stdout;
-		else if (0 == strcmp("r", p))
+		else if (*p == 'r')
 			return stdin;
 		else
 			fail("unknown fopen mode \"%s\"", p);
 	}
-	if (0 == strcmp("--", s) && 0 == strcmp("w", p)) return stderr;
+	if (0 == strcmp("--", s) && *p == 'w') return stderr;
 
-	f = fopen(s, p);
+	// NOTE: the 'b' flag is required for I/O on Windows systems
+	// on unix, it is ignored
+	char pp[3] = { p[0], 'b', '\0' };
+	f = fopen(s, pp);
 	if (f == NULL)
 		fail("can not open file \"%s\" in mode \"%s\"",// (%s)",
-				s, p);//, strerror(errno));
+				s, pp);//, strerror(errno));
 	global_variable_containing_the_name_of_the_last_opened_file = s;
 	return f;
 }
@@ -335,9 +338,12 @@ uppsala:
 static void fill_temporary_filename(char *out)
 {
 #ifdef I_CAN_HAS_MKSTEMP
-		static char tfn[] = "/tmp/iio_temporary_file_XXXXXX\0";
+		char tfn[] = "/tmp/iio_tmp_file_XXXXXX\0";
 		int r = mkstemp(tfn);
-		if (r == -1) fail("caca [tfn]");
+		if (r == -1) {
+			perror("hola");
+			fail("could not create tmp filename");
+		}
 #else
 		static char buf[L_tmpnam+1];
 		char *tfn = tmpnam(buf);
@@ -967,26 +973,8 @@ static void *load_rest_of_file(long *on, FILE *f, void *buf, size_t bufn)
 // Implementation: re-invent the wheel
 static char *put_data_into_temporary_file(void *filedata, size_t filesize)
 {
-#ifdef I_CAN_HAS_MKSTEMP
-	static char filename[] = "/tmp/iio_temporal_file_XXXXXX\0";
-	int r = mkstemp(filename);
-	if (r == -1) fail("caca [pditf]");
-#else
-	// WARNING XXX XXX XXX ERROR FIXME TODO WARNING:
-	// this function is not reentrant
-	// (this should not a problem unless reading images on a parallel loop)
-	static char buf[L_tmpnam+1];
-	//
-	// from TMPNAM(3):
-	//
-	//The  tmpnam()  function  returns  a pointer to a string that is a
-	//valid filename, and such that a file with this name did  not  exist
-	//at  some point  in  time, so that naive programmers may think it a
-	//suitable name for a temporary file.
-	//
-	char *filename = tmpnam(buf);
-	// MULTIPLE RACE CONDITIONS HERE
-#endif
+	static char filename[FILENAME_MAX];
+	fill_temporary_filename(filename);
 	FILE *f = xfopen(filename, "w");
 	int cx = fwrite(filedata, filesize, 1, f);
 	if (cx != 1) fail("fwrite to temporary file failed");
@@ -997,10 +985,10 @@ static char *put_data_into_temporary_file(void *filedata, size_t filesize)
 static void delete_temporary_file(char *filename)
 {
 	(void)filename;
-#ifdef NDEBUG
+#ifdef I_CAN_KEEP_TMP_FILES
 	remove(filename);
 #else
-	IIO_DEBUG("WARNING: kept temporary file %s around\n", filename);
+	fprintf(stderr, "WARNING: kept temporary file %s around\n", filename);
 #endif
 }
 
@@ -1271,6 +1259,11 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 	}
 	if (bps >= 8) assert(bps == 8*iio_type_size(fmt_iio));
 
+	uint16_t planarity;
+	r = TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &planarity);
+	if (r != 1) planarity = PLANARCONFIG_CONTIG;
+	bool broken = planarity == PLANARCONFIG_SEPARATE;
+
 
 	// acquire memory block
 	uint32_t scanline_size = (w * spp * bps)/8;
@@ -1281,7 +1274,9 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 	IIO_DEBUG("sls = %d\n", (int)scanline_size);
 	int sls = TIFFScanlineSize(tif);
 	IIO_DEBUG("sls(r) = %d\n", (int)sls);
-	assert((int)scanline_size == sls);
+	if ((int)scanline_size != sls)
+		fprintf(stderr, "scanline_size,sls = %d,%d\n", (int)scanline_size,sls);
+	//assert((int)scanline_size == sls);
 	scanline_size = sls;
 	uint8_t *data = xmalloc(w * h * spp * rbps);
 	uint8_t *buf = xmalloc(scanline_size);
@@ -1292,28 +1287,48 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 		uint32_t tilewidth, tilelength;
 		TIFFGetField(tif, TIFFTAG_TILEWIDTH, &tilewidth);
 		TIFFGetField(tif, TIFFTAG_TILELENGTH, &tilelength);
+		IIO_DEBUG("tilewidth = %u\n", tilewidth);
+		IIO_DEBUG("tilelength = %u\n", tilelength);
+		IIO_DEBUG("tisize = %d (%u)\n", tisize, tilewidth*tilelength);
 
 		if (bps < 8)
 			fail("only byte-oriented tiles are supported (%d)",bps);
 		int Bps = bps/8;
 
-		uint8_t *tbuf = xmalloc(tisize);
+		IIO_DEBUG("bps = %u\n", bps);
+		IIO_DEBUG("Bps = %d\n", Bps);
+
+		uint8_t *tbuf = xmalloc(tisize*Bps*spp);
 		for (uint32_t tx = 0; tx < w; tx += tilewidth)
 		for (uint32_t ty = 0; ty < h; ty += tilelength)
 		{
-			r = TIFFReadTile(tif, tbuf, tx, ty, 0, 0);
-			for (uint32_t j = 0; j < tilewidth; j++)
-			for (uint32_t i = 0; i < tilewidth; i++)
+			IIO_DEBUG("tile at %u %u\n", tx, ty);
+			if (!broken) {
+				if (-1 == TIFFReadTile(tif, tbuf, tx, ty, 0, 0))
+					memset(tbuf, -1, TIFFTileSize(tif));
+			}
 			for (uint16_t l = 0; l < spp; l++)
+			{
+			int L = l, Spp = spp;
+			if (broken) {
+				TIFFReadTile(tif, tbuf, tx, ty, 0, l);
+				L = 0; 
+				Spp = 1;
+			}
+			for (uint32_t j = 0; j < tilelength; j++)
+			for (uint32_t i = 0; i < tilewidth; i++)
 			for (int b = 0; b < Bps; b++)
 			{
 				uint32_t ii = i + tx;
 				uint32_t jj = j + ty;
 				if (ii < w && jj < h)
 				{
-				uint8_t s = tbuf[((j*tilewidth+i)*spp+l)*Bps+b];
-				((uint8_t*)data)[((jj*w+ii)*spp+l)*Bps+b] = s;
+				int idx_i = ((j*tilewidth + i)*Spp + L)*Bps + b;
+				int idx_o = ((jj*w + ii)*spp + l)*Bps + b;
+				uint8_t s = tbuf[idx_i];
+				((uint8_t*)data)[idx_o] = s;
 				}
+			}
 			}
 		}
 		xfree(tbuf);
@@ -2145,6 +2160,95 @@ static int read_raw_named_image(struct iio_image *x, const char *filespec)
 	return r;
 }
 
+//static int write_raw_named_image(const charr *filespec, struct iio_image *x)
+//{
+//	// filespec => description + filename
+//	char *colon = raw_prefix(filespec);
+//	size_t desclen = colon - filespec - 5;
+//	char description[desclen+1];
+//	char *filename = colon + 1;
+//	memcpy(description, filespec+4, desclen);
+//	description[desclen] = '\0';
+//
+//	// write data to file
+//	long file_size;
+//	void *file_contents = NULL;
+//	{
+//		FILE *f = xfopen(filename, "w");
+//		file_contents = load_rest_of_file(&file_size, f, NULL, 0);
+//		xfclose(f);
+//	}
+//
+//	// fill-in data description
+//	int width = -1;
+//	int height = -1;
+//	int pixel_dimension = 1;
+//	int brokenness = 0;
+//	int endianness = 0;
+//	int sample_type = IIO_TYPE_UINT8;
+//	int offset = -1;
+//
+//	// parse description string
+//	char *delim = ",", *tok = strtok(description, delim);
+//	int field;
+//	while (tok) {
+//		IIO_DEBUG("\ttoken = %s\n", tok);
+//		if (tok[1] == '@')
+//			field = raw_gfp(file_contents, file_size, 2+tok,
+//					endianness);
+//		else
+//			field = atoi(1+tok);
+//		IIO_DEBUG("\tfield=%d\n", field);
+//		switch(*tok) {
+//		case 'w': width           = field;       break;
+//		case 'h': height          = field;       break;
+//		case 'p': pixel_dimension = field;       break;
+//		case 'o': offset          = field;       break;
+//		case 'b': brokenness      = 1;                 break;
+//		case 'e': endianness      = 1;                 break;
+//		case 't': sample_type     = iio_inttyp(1+tok); break;
+//		}
+//		tok = strtok(NULL, delim);
+//	}
+//	int sample_size = iio_type_size(sample_type);
+//
+//	IIO_DEBUG("w = %d\n", width);
+//	IIO_DEBUG("h = %d\n", height);
+//	IIO_DEBUG("p = %d\n", pixel_dimension);
+//	IIO_DEBUG("o = %d\n", offset);
+//	IIO_DEBUG("b = %d\n", brokenness);
+//	IIO_DEBUG("t = %s\n", iio_strtyp(sample_type));
+//
+//	// estimate missing dimensions
+//	IIO_DEBUG("before estimation w=%d h=%d o=%d\n", width, height, offset);
+//	int pd = pixel_dimension;
+//	int ss = sample_size;
+//	if (offset < 0 && width > 0 && height > 0)
+//		offset = file_size - width * height * pd * ss;
+//	if (width < 0 && offset > 0 && height > 0)
+//		width = (file_size - offset)/(height * pd * ss);
+//	if (height < 0 && offset > 0 && width > 0)
+//		height = (file_size - offset)/(width * pd * ss);
+//	if (offset < 0) offset = 0;
+//	if (height < 0) height = file_size/(width * pd * ss);
+//	if (width  < 0) width  = file_size/(height * pd * ss);
+//	if (offset < 0 || width < 0 || height < 0)
+//		fail("could not determine width, height and offset"
+//				"(got %d,%d,%d)", width, height, offset);
+//	IIO_DEBUG("after estimation w=%d h=%d o=%d\n", width, height, offset);
+//
+//	int used_data_size = offset+width*height*pd*ss;
+//	if (used_data_size > file_size)
+//		fail("raw file is not large enough");
+//
+//	int r = parse_raw_binary_image_explicit(x,
+//			file_contents, file_size,
+//			width, height, pixel_dimension,
+//			offset, sample_type, brokenness, endianness);
+//	xfree(file_contents);
+//	return r;
+//}
+
 
 
 
@@ -2162,7 +2266,7 @@ static int read_beheaded_whatever(struct iio_image *x,
 	xfree(filedata);
 
 	//char command_format[] = "convert - %s < %s\0";
-	char command_format[] = "convert - %s < %s\0";
+	char command_format[] = "/usr/bin/convert - %s < %s\0";
 	char ppmname[strlen(filename)+5];
 	sprintf(ppmname, "%s.ppm", filename);
 	char command[strlen(command_format)+1+2*strlen(filename)];
@@ -2230,6 +2334,7 @@ static void iio_save_image_as_png(const char *filename, struct iio_image *x)
 			PNG_FILTER_TYPE_DEFAULT);
 	png_set_rows(pp, pi, row);
 	int transforms = PNG_TRANSFORM_IDENTITY;
+	if (bit_depth == 16) transforms |= PNG_TRANSFORM_SWAP_ENDIAN;
 	png_write_png(pp, pi, transforms, NULL);
 	xfclose(f);
 	png_destroy_write_struct(&pp, &pi);
@@ -2316,14 +2421,8 @@ static void iio_save_image_as_tiff_smarter(const char *filename,
 		return;
 	}
 	if (0 == strcmp(filename, "-")) {
-#ifdef I_CAN_HAS_MKSTEMP
-		static char tfn[] = "/tmp/iio_temporal_tiff_XXXXXX\0";
-		int r = mkstemp(tfn);
-		if (r == -1) fail("caca [tiff smarter]");
-#else
-		static char buf[L_tmpnam+1];
-		char *tfn = tmpnam(buf);
-#endif//I_CAN_HAS_MKSTEMP
+		char tfn[FILENAME_MAX];
+		fill_temporary_filename(tfn);
 		iio_save_image_as_tiff(tfn, x);
 		FILE *f = xfopen(tfn, "r");
 		int c;
@@ -3118,6 +3217,10 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 {
 	int typ = normalize_type(x->type);
 	if (x->dimension != 2) fail("de moment només escrivim 2D");
+	//if (raw_prefix(fname)) {
+	//	r = write_raw_named_image(fname, x);
+	//	return;
+	//}
 	if (string_suffix(filename, ".uv") && typ == IIO_TYPE_FLOAT
 				&& x->pixel_dimension == 2) {
 		iio_save_image_as_juv(filename, x);
@@ -3145,7 +3248,7 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 		return;
 	}
 #endif//I_CAN_HAS_LIBTIFF
-	if (typ != IIO_TYPE_DOUBLE && typ != IIO_TYPE_FLOAT && typ != IIO_TYPE_UINT8 && typ != IIO_TYPE_INT16 && typ != IIO_TYPE_INT8 && typ != IIO_TYPE_UINT32)
+	if (typ != IIO_TYPE_DOUBLE && typ != IIO_TYPE_FLOAT && typ != IIO_TYPE_UINT8 && typ != IIO_TYPE_INT16 && typ != IIO_TYPE_INT8 && typ != IIO_TYPE_UINT32 && typ != IIO_TYPE_UINT16)
 		fail("de moment només fem floats o bytes (got %d)",typ);
 	int nsamp = iio_image_number_of_samples(x);
 	if (typ == IIO_TYPE_FLOAT &&
@@ -3206,6 +3309,23 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 				return;
 			}
 			iio_save_image_as_png(filename+4, x);
+			return;
+		}
+	}
+	if (true) {
+		char *pngname = strstr(filename, "PNG16:");
+		if (pngname == filename) {
+			if (typ != IIO_TYPE_UINT16) {
+				void *old_data = x->data;
+				x->data = xmalloc(nsamp*sizeof(float));
+				memcpy(x->data, old_data, nsamp*sizeof(float));
+				iio_convert_samples(x, IIO_TYPE_UINT16);
+				iio_save_image_default(filename, x);//recursive
+				xfree(x->data);
+				x->data = old_data;
+				return;
+			}
+			iio_save_image_as_png(filename+6, x);
 			return;
 		}
 	}
