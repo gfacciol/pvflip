@@ -29,17 +29,17 @@ For the intallations remember to set:
 
 # Dependencies
 
-### OSX dependencies (known):
+### OSX dependencies (known)
     PyGL (pip install PyGL)
 
 
-### Linux dependencies (known):
+### Linux dependencies (known)
     x11proto-xf86vidmode-dev
     xorg-dev libglu1-mesa-dev
     python-opengl cmake 
 
 
-### Windows dependencies: 
+### Windows dependencies
     Statically linked win32 dll's for GLFW and IIO are provided, 
     so there's no need to compile them under windows. Yet to run pvflip 
     the following dependencies must be met.
@@ -52,5 +52,5 @@ For the intallations remember to set:
       is in windows\system*\, otherwise download it from: 
       http://user.xmission.com/~nate/glut.html
 
-### Optional dependency (only for some piio functions):
+### Optional dependency (only for accessing some piio functionalities)
     numpy > 1.5
