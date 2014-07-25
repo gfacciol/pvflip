@@ -660,7 +660,7 @@ def keyboard_callback(window, key, scancode, action, mods):
        glfw.glfwSetWindowShouldClose(window,1)
        global x0,y0,w0,h0
        print x0,y0,w0,h0
-       exit(0)
+       sys.exit(0)
 
 
 
@@ -926,7 +926,7 @@ def main():
              from os import stat
              stat(sys.argv[1])
           except OSError:
-             exit(1)
+             sys.exit(1)
        # otherwise use stdin as input (because it should be a pipe)
        else:
           sys.argv.append('-')
@@ -963,7 +963,7 @@ def main():
     from os import getcwd,chdir
     savepath = getcwd()
     if not glfw.glfwInit():
-        exit()
+        sys.exit(1)
     chdir(savepath)
 
 
@@ -978,7 +978,7 @@ def main():
 
     if not window:
         glfw.glfwTerminate()
-        exit()
+        sys.exit(1)
 
     # Make the window's context current
     glfw.glfwMakeContextCurrent(window)
