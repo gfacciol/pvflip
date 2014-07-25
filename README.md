@@ -9,7 +9,7 @@ when the [dependecies are met](#dependencies).
 ## On Windows: 
 
 [A precompiled standalone exe is available for win32.](https://github.com/gfacciol/pvflip/tree/master/PRECOMPILED)
-Otherwise, the installation with python is more [laborious](#Windows-dependencies).
+Otherwise, the installation with python is more [laborious](#windows-dependencies).
 
 
 # Installation (optional)
