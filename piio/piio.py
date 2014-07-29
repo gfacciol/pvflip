@@ -1,17 +1,32 @@
-# Primitie python wrapper for iio
+# Primitive python wrapper for iio
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
+#
+# This file is part of pvflip.
+# 
+# Pvflip is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# Pvflip is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+# 
+# You should have received a copy of the GNU Affero General Public License
+# along with pvflip.  If not, see <http://www.gnu.org/licenses/>.
 
 
 import os,sys,ctypes
 
 #if sys.platform.startswith('win'):
 #   lib_ext = '.dll'
-#gcc  -std=c99 -static-libgcc -shared -s iio.c freemem.c -I/usr/local/include -I/usr/include -o WIN32/iio.dll  /usr/local/lib/libpng.a /usr/local/lib/libjpeg.a  /usr/local/lib/libtiff.a /usr/local/lib/libz.a 
 #elif sys.platform == 'darwin':
 #   lib_ext = '.dylib'
 #else:
 #   lib_ext = '.so'
 #gcc -std=c99 iio.c -shared -o iio.dylib -lpng -ltiff -ljpeg
+
 
 lib_ext = '.so'
 here  = os.path.dirname(__file__)

@@ -1,4 +1,5 @@
-
+// Copyright 2014, Enric Meinhardt <enric.meinhardt@cmla.ens-cachan.fr>
+//
 // IIO: a library for reading small images {{{1
 //
 // Goal: load an image (of unknown format) from a given FILE*
@@ -348,7 +349,7 @@ static void fill_temporary_filename(char *out)
 		static char buf[L_tmpnam+1];
 		char *tfn = tmpnam(buf);
 #endif//I_CAN_HAS_MKSTEMP
-		strcpy(out, tfn);
+		strncpy(out, tfn, FILENAME_MAX);
 }
 
 
@@ -2268,9 +2269,9 @@ static int read_beheaded_whatever(struct iio_image *x,
 	//char command_format[] = "convert - %s < %s\0";
 	char command_format[] = "/usr/bin/convert - %s < %s\0";
 	char ppmname[strlen(filename)+5];
-	sprintf(ppmname, "%s.ppm", filename);
+	snprintf(ppmname, FILENAME_MAX, "%s.ppm", filename);
 	char command[strlen(command_format)+1+2*strlen(filename)];
-	sprintf(command, command_format, ppmname, filename);
+	snprintf(command, FILENAME_MAX, command_format, ppmname, filename);
 	IIO_DEBUG("COMMAND: %s\n", command);
 	int r = system(command);
 	IIO_DEBUG("command returned %d\n", r);
