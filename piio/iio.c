@@ -1,3 +1,4 @@
+// Copyright 2014, Enric Meinhardt <enric.meinhardt@cmla.ens-cachan.fr>
 
 // IIO: a library for reading small images {{{1
 //

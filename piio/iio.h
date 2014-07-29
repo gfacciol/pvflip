@@ -1,3 +1,5 @@
+// Copyright 2014, Enric Meinhardt <enric.meinhardt@cmla.ens-cachan.fr>
+
 #ifndef _IIO_H
 #define _IIO_H
 

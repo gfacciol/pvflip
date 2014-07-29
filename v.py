@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 #
-# This file is part of Pvflip.
+# This file is part of pvflip.
 # 
 # Pvflip is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 # 
 # You should have received a copy of the GNU Affero General Public License
-# along with Pvflip.  If not, see <http://www.gnu.org/licenses/>.
+# along with pvflip.  If not, see <http://www.gnu.org/licenses/>.
 
 ############################################################################
 #
