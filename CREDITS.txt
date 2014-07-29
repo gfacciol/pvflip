@@ -1,15 +1,16 @@
-As in the movies we credit everybody for their contribution.
+Everybody gets credit for their contribution.
 
 
 * Developers
 Gabriele Facciolo
+Enric Meinhardt (iio library)
 
 * Testing, ideas and suggestions
 Carlo de Franchis
 Enric Meinhardt
 Rafael Grompone Von Gioi
 
-* Indirect contributions (libraries, wrappers, blog posts)
+* Libraries, wrappers, blog posts
 https://github.com/mnhrdt/iio/
 https://github.com/rougier/pyglfw
 htte://www.seethroughskin.com/blog/?p=771
