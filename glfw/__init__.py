@@ -29,7 +29,7 @@
 #     distribution.
 #  
 # -----------------------------------------------------------------------------
-import os,sys
+import os,sys,platform
 import ctypes
 import ctypes.util
 from ctypes import *
@@ -40,7 +40,7 @@ _glfw_file = None
 # ADDED FOR PYTHON PACKAGE
 if sys.platform.startswith('win'):
    lib_ext = '.dll'
-   if sys.platform == 'win64':
+   if platform.architecture()[0] == '64bit':
       lib_basename = 'glfw-3.0.4.bin.WIN64/lib-mingw/glfw3'
    else:
       lib_basename = 'glfw-3.0.4.bin.WIN32/lib-mingw/glfw3'
