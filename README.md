@@ -32,12 +32,16 @@ For the intallations remember to set:
 
 ### OSX dependencies (known)
     PyGL (pip install PyGL)
+    A working C compiler (XCode)
+    libtiff libjpeg libpng for piio
 
 
 ### Linux dependencies (known)
     x11proto-xf86vidmode-dev
     xorg-dev libglu1-mesa-dev
     python-opengl cmake 
+    A working C compiler
+    libtiff libjpeg libpng for piio
 
 
 ### Windows dependencies
