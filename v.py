@@ -68,11 +68,11 @@ oflow_shader = """
   {
        vec4 p = texture2D(src, gl_TexCoord[0].xy);
        float a = (180.0/M_PI)*(atan2(-p.x,p.w) + M_PI);
-       float r = sqrt(p.x*p.x+p.w*p.w);
-       vec4 q = vec4(a, 1.0,r,0.0);
+       float r = sqrt(p.x*p.x+p.w*p.w)*shader_a;
+       vec4 q = vec4(a, clamp(r,0.0,1.0),clamp(r,0.0,1.0),0.0);
        p = hsvtorgb(q);
 
-       gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
+       gl_FragColor = clamp(p, 0.0, 1.0) ;
 
   }
    """
@@ -137,7 +137,9 @@ rb_shader = """
    void main (void)
    {
       vec4 p = texture2D(src, gl_TexCoord[0].xy);
-      p.xyzw=vec4(p.x * shader_a + shader_b ,0.0,p.w * shader_a + shader_b,0.0);
+      p.xyzw=vec4(p.x * shader_a + shader_b,
+                  p.x * shader_a + shader_b,
+                  p.x * shader_a + shader_b, 0.0);
       gl_FragColor = clamp(p, 0.0, 1.0);
    }
    """
@@ -579,11 +581,6 @@ def keyboard_callback(window, key, scancode, action, mods):
        V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 2
        V.redisp = 1
 
-
-    # reset visualization
-    if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
-       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 2
-       V.redisp = 1
 
 
     # modifier keys
