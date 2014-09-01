@@ -259,7 +259,7 @@ class ViewportState:
       # disable FIT TO WINDOW
       if V.TOGGLE_FIT_TO_WINDOW_SIZE:
          V.TOGGLE_FIT_TO_WINDOW_SIZE=0
-         print "DISABLE: fit image to window"
+         print("DISABLE: fit image to window")
 
       V.redisp=1
 
@@ -310,7 +310,7 @@ class ImageState:
                idx = (x-tile[1]+(y-tile[2])*tile[3])*tile[5]
                return tile[0][idx:idx+tile[5]]
          # this should never happen
-         print "this should never happen"
+         print("this should never happen")
          return None
       else:
          return None
@@ -342,7 +342,7 @@ def load_image(imagename):
 #      print max(map(lambda x: float('nan') if math.isinf(x) else  x , im))
       return tiles,w,h,nch,vmin,vmax
    except SystemError:
-      print 'error reading the image'
+      print('error reading the image')
 
 
 def change_image(new_idx):
@@ -457,7 +457,7 @@ def mouseButtons_callback(window, button, action, mods):
        xx0,yy0 = x0,y0
        xx1,yy1 = x0+w0,y0+h0
        xx0,yy0,xx1,yy1 = int(xx0),int(yy0),int(xx1),int(yy1)
-       print xx0, yy0, abs(xx1-xx0), abs(yy1-yy0)
+       print(xx0, yy0, abs(xx1-xx0), abs(yy1-yy0))
        V.redisp=1
 
     # drag
@@ -538,15 +538,15 @@ def keyboard_callback(window, key, scancode, action, mods):
        if V.shift_is_pressed:
          V.TOGGLE_AUTOMATIC_RANGE = (V.TOGGLE_AUTOMATIC_RANGE + 1) % 2
          if V.TOGGLE_AUTOMATIC_RANGE: 
-            print "automatic range enabled"
+            print("automatic range enabled")
          else: 
-            print "automatic range disabled"
+            print("automatic range disabled")
          
 
     if key==glfw.GLFW_KEY_B and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT): 
        V.reset_range_to_8bits()
        V.TOGGLE_AUTOMATIC_RANGE = 0
-       print "range set to [0,255]"
+       print("range set to [0,255]")
 
 
 
@@ -560,11 +560,11 @@ def keyboard_callback(window, key, scancode, action, mods):
     if key==glfw.GLFW_KEY_F and action==glfw.GLFW_PRESS:
        V.TOGGLE_FIT_TO_WINDOW_SIZE = (V.TOGGLE_FIT_TO_WINDOW_SIZE + 1) % 2
        if V.TOGGLE_FIT_TO_WINDOW_SIZE:
-          print "ENABLE: fit image to window"
+          print("ENABLE: fit image to window")
           V.update_zoom_position_to_fit_window()
           V.redisp = 1 
        else:
-          print "DISABLE: fit image to window"
+          print("DISABLE: fit image to window")
           #V.reset_zoom()
           V.redisp = 1 
 
@@ -622,28 +622,28 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # help
     if key==glfw.GLFW_KEY_H   and action==glfw.GLFW_PRESS:
-       print "Q     : quit"
-       print "U     : show/hide HUD"
-       print "arrows: pan image"
-       print "P,M   : zoom image in/out"
-       print "Z     : zoom modifier for the mouse wheel"
-       print "F     : fit image to window size"
-       print "C     : reset intensity range"
-       print "shiftC: automatically reset range"
-       print "B     : set range to [0:255]"
-       print "D,E   : range scale up/down"
-       print "R     : reset visualization: zoom,pan,range"
-       print "1     : toggle optic flow coloring"
-       print "mouse wheel: contrast center"
-       print "mouse wheel+shift: contrast scale"
-       print "mouse motion+shift: contrast center"
-       print "space/backspace : next/prev image"
+       print("Q     : quit")
+       print("U     : show/hide HUD")
+       print("arrows: pan image")
+       print("P,M   : zoom image in/out")
+       print("Z     : zoom modifier for the mouse wheel")
+       print("F     : fit image to window size")
+       print("C     : reset intensity range")
+       print("shiftC: automatically reset range")
+       print("B     : set range to [0:255]")
+       print("D,E   : range scale up/down")
+       print("R     : reset visualization: zoom,pan,range")
+       print("1     : toggle optic flow coloring")
+       print("mouse wheel: contrast center")
+       print("mouse wheel+shift: contrast scale")
+       print("mouse motion+shift: contrast center")
+       print("space/backspace : next/prev image")
 
     # exit
     if (key==glfw.GLFW_KEY_Q  or key==glfw.GLFW_KEY_ESCAPE ) and action ==glfw.GLFW_PRESS:
        glfw.glfwSetWindowShouldClose(window,1)
        global x0,y0,w0,h0
-       print x0,y0,w0,h0
+       print(x0,y0,w0,h0)
        exit(0)
 
 
@@ -866,9 +866,9 @@ def toc(name=''):
     global time_start
     elapsed = time.time() - time_start
     if name=='':
-       print '%f s'%(elapsed)
+       print('%f s'%(elapsed))
     else:
-       print '%s: %f s'%(name, elapsed)
+       print('%s: %f s'%(name, elapsed))
 ##### TIC TOC 
 
 
@@ -886,8 +886,8 @@ def main():
     if len(sys.argv) == 1:
        # check if the standard input is a tty (not a pipe)
        if sys.stdin.isatty():
-          print "Incorrect syntax, use:"
-          print '  > ' + sys.argv[0] + " image.png"
+          print("Incorrect syntax, use:")
+          print('  > ' + sys.argv[0] + " image.png")
 
           # show a default image if exists
           sys.argv.append('/Users/facciolo/uiskentuie_standing_stone.png')
@@ -1009,7 +1009,7 @@ def main():
     try:
        glUseProgram(program)   
     except OpenGL.error.GLError:
-       print glGetProgramInfoLog(program)
+       print(glGetProgramInfoLog(program))
        raise
     # set the values of the shader uniform variables (global)
     shader_a= glGetUniformLocation(program, "shader_a")
