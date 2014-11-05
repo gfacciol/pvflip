@@ -53,8 +53,8 @@ oflow_shader = """
     float atan2(float x, float y)
     {
        if (x>0.0) { return atan(y/x); }
-       else if(x<0.0 && y>=0.0) { return atan(y/x) + M_PI; }
-       else if(x<0.0 && y<0.0 ) { return atan(y/x) - M_PI; }
+       else if(x<0.0 && y>0.0) { return atan(y/x) + M_PI; }
+       else if(x<0.0 && y<=0.0 ) { return atan(y/x) - M_PI; }
        else if(x==0.0 && y>0.0 ) { return M_PI_2; }
        else if(x==0.0 && y<0.0 ) { return -M_PI_2; }
        return 0.0;
