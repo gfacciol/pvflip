@@ -1,8 +1,6 @@
-// Copyright 2014, Enric Meinhardt <enric.meinhardt@cmla.ens-cachan.fr>
+// IIO: a library for reading small images                                  {{{1
 //
-// IIO: a library for reading small images {{{1
-//
-// Goal: load an image (of unknown format) from a given FILE*
+// Goal: load an image (of unknown format) from a given file
 //
 // Technique: read the first few bytes of the file to identify the format, and
 // call the appropriate image library (lipng, lipjpeg, libtiff, etc).  For
@@ -22,7 +20,7 @@
 //
 
 
-// #includes {{{1
+// #includes                                                                {{{1
 
 #include <assert.h>
 #include <stdbool.h>
@@ -43,7 +41,7 @@
 
 
 
-// #defines {{{1
+// #defines                                                                 {{{1
 
 //
 // configuration
@@ -135,7 +133,7 @@
 
 
 
-// typedefs {{{1
+// typedefs                                                                 {{{1
 
 typedef long long longlong;
 typedef long double longdouble;
@@ -143,7 +141,7 @@ typedef long double longdouble;
 
 
 
-// utility functions {{{1
+// utility functions                                                        {{{1
 
 #ifndef IIO_ABORT_ON_ERROR
 
@@ -353,7 +351,7 @@ static void fill_temporary_filename(char *out)
 }
 
 
-// struct iio_image { ... }; {{{1
+// struct iio_image { ... };                                                {{{1
 
 // This struct is used for exchanging image information between internal
 // functions.  It could be safely eliminated, and this information be passed as
@@ -373,7 +371,7 @@ struct iio_image {
 };
 
 
-// struct iio_image management {{{1
+// struct iio_image management                                              {{{1
 
 static void iio_image_assert_struct_consistency(struct iio_image *x)
 {
@@ -599,7 +597,7 @@ static void iio_image_build_independent(struct iio_image *x,
 }
 
 
-// data conversion {{{1
+// data conversion                                                          {{{1
 
 // macros to crop a numeric value
 #define T0(x) ((x)>0?(x):0)
@@ -828,7 +826,7 @@ static void unpack_bits_to_bytes(uint8_t out[8], uint8_t in)
 
 static void unpack_to_bytes_here(uint8_t *dest, uint8_t *src, int n, int bits)
 {
-	fprintf(stderr, "unpacking %d bytes %d-fold\n", n, bits);
+	//fprintf(stderr, "unpacking %d bytes %d-fold\n", n, bits);
 	assert(bits==1 || bits==2 || bits==4);
 	//size_t unpack_factor = 8 / bits;
 	switch(bits) {
@@ -935,7 +933,7 @@ static void iio_hacky_uncolorizea(struct iio_image *x)
 }
 
 
-// general memory and file utilities {{{1
+// general memory and file utilities                                        {{{1
 
 
 // Input: a partially read stream "f"
@@ -1050,8 +1048,15 @@ recover_broken_pixels_float(float *clear, float *broken, int n, int pd)
 		clear[pd*i + l] = broken[n*l + i];
 }
 
-// individual format readers {{{1
-// PNG reader {{{2
+static void
+recover_broken_pixels_double(double *clear, double *broken, int n, int pd)
+{
+	FORL(pd) FORI(n)
+		clear[pd*i + l] = broken[n*l + i];
+}
+
+// individual format readers                                                {{{1
+// PNG reader                                                               {{{2
 
 static void swap_two_bytes(char *here)
 {
@@ -1126,7 +1131,7 @@ static int read_beheaded_png(struct iio_image *x,
 
 #endif//I_CAN_HAS_LIBPNG
 
-// JPEG reader {{{2
+// JPEG reader                                                              {{{2
 
 #ifdef I_CAN_HAS_LIBJPEG
 #  include <jpeglib.h>
@@ -1194,10 +1199,35 @@ static int read_beheaded_jpeg(struct iio_image *x,
 }
 #endif//I_CAN_HAS_LIBJPEG
 
-// TIFF reader {{{2
+// TIFF reader                                                              {{{2
 
 #ifdef I_CAN_HAS_LIBTIFF
 #  include <tiffio.h>
+
+static TIFF *tiffopen_fancy(const char *filename, char *mode)
+{
+	char *comma = strrchr(filename, ',');
+	if (*mode != 'r' || !comma)
+	def:	return TIFFOpen(filename, mode);
+
+	int aftercomma = strlen(comma + 1);
+	int ndigits = strspn(comma + 1, "0123456789");
+
+	if (aftercomma != ndigits) goto def;
+
+	char buf[FILENAME_MAX];
+	strncpy(buf, filename, FILENAME_MAX);
+	comma = strrchr(buf, ',');
+	*comma = '\0';
+	int index = atoi(comma + 1);
+
+	TIFF *tif = TIFFOpen(buf, mode);
+	if (!tif) return tif;
+	for (int i = 0; i < index; i++)
+		TIFFReadDirectory(tif);
+	
+	return tif;
+}
 
 static int read_whole_tiff(struct iio_image *x, const char *filename)
 {
@@ -1205,7 +1235,8 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 	// if it fails, it tries to read ABGR data
 	TIFFSetWarningHandler(NULL);//suppress warnings
 
-	TIFF *tif = TIFFOpen(filename, "r");
+	//fprintf(stderr, "TIFFOpen \"%s\"\n", filename);
+	TIFF *tif = tiffopen_fancy(filename, "r");
 	if (!tif) fail("could not open TIFF file \"%s\"", filename);
 	uint32_t w, h;
 	uint16_t spp, bps, fmt;
@@ -1341,7 +1372,7 @@ static int read_whole_tiff(struct iio_image *x, const char *filename)
 		if (r < 0) fail("error reading tiff row %d/%d", i, (int)h);
 
 		if (bps < 8) {
-			fprintf(stderr, "unpacking %dth scanline\n", i);
+			//fprintf(stderr, "unpacking %dth scanline\n", i);
 			unpack_to_bytes_here(data + i*uscanline_size, buf,
 					scanline_size, bps);
 			fmt_iio = IIO_TYPE_UINT8;
@@ -1395,7 +1426,7 @@ static int read_beheaded_tiff(struct iio_image *x,
 
 #endif//I_CAN_HAS_LIBTIFF
 
-// QNM readers {{{2
+// QNM readers                                                              {{{2
 
 #include <ctype.h>
 
@@ -1513,7 +1544,7 @@ static int read_beheaded_qnm(struct iio_image *x,
 	return 0;
 }
 
-// PCM reader {{{2
+// PCM reader                                                               {{{2
 // PCM is a file format to store complex float images
 // it is used by some people also for optical flow fields
 static int read_beheaded_pcm(struct iio_image *x,
@@ -1545,7 +1576,7 @@ static int read_beheaded_pcm(struct iio_image *x,
 }
 
 
-// RIM reader {{{2
+// RIM reader                                                               {{{2
 // (megawave's image format)
 
 // documentation of this format:
@@ -1751,7 +1782,7 @@ static void switch_4endianness(void *tt, int n)
 	}
 }
 
-// PFM reader {{{2
+// PFM reader                                                               {{{2
 static int read_beheaded_pfm(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
@@ -1776,7 +1807,7 @@ static int read_beheaded_pfm(struct iio_image *x,
 	return 0;
 }
 
-// FLO reader {{{2
+// FLO reader                                                               {{{2
 static int read_beheaded_flo(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
@@ -1796,7 +1827,7 @@ static int read_beheaded_flo(struct iio_image *x,
 	return 0;
 }
 
-// JUV reader {{{2
+// JUV reader                                                               {{{2
 static int read_beheaded_juv(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
@@ -1824,7 +1855,7 @@ static int read_beheaded_juv(struct iio_image *x,
 	return 0;
 }
 
-// LUM reader {{{2
+// LUM reader                                                               {{{2
 
 static int lum_pickshort(char *ss)
 {
@@ -1875,7 +1906,7 @@ static int read_beheaded_lum(struct iio_image *x,
 	return 0;
 }
 
-// BMP reader {{{2
+// BMP reader                                                               {{{2
 static int read_beheaded_bmp(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
@@ -1891,7 +1922,7 @@ static int read_beheaded_bmp(struct iio_image *x,
 }
 
 
-// EXR reader {{{2
+// EXR reader                                                               {{{2
 
 #ifdef I_CAN_HAS_LIBEXR
 #include <ImfCRgbaFile.h>
@@ -1979,10 +2010,11 @@ static int read_beheaded_exr(struct iio_image *x,
 
 
 
-// ASC reader {{{2
+// ASC reader                                                               {{{2
 static int read_beheaded_asc(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
+	(void)nheader;
 	assert(header[nheader-1] == '\n');
 	int n[4], r = sscanf(header, "%d %d %d %d\n", n, n+1, n+2, n+3);
 	if (r != 4) return 1;
@@ -2004,13 +2036,59 @@ static int read_beheaded_asc(struct iio_image *x,
 	return 0;
 }
 
-// RAW reader {{{2
+// RAW reader                                                               {{{2
 
-// Note: there are two raw readers, either the user supplies the
-// dimensions and data format, or she defines where they can be found.
+// Note: there are two raw readers, either
+//
+// 1) the user supplies the dimensions and data format, or their location
+// 2) the program uses several heuristics to find the dimensions
+//
 // They are named, respectively, explicit and fancy.
 //
-// Note2: to be implemented
+// Note2: the fancy reader is not yet implemented
+
+//
+// Documentation for the "explicit" raw reader
+// -------------------------------------------
+//
+// Idea: to read a raw file named "file.xxx", open the image
+// with name "RAW[...]:file.xxx".  The "..." specify the
+// details of the raw format.
+//
+// 
+// Example:
+//
+// RAW[w320,h200,tFLOAT]:file.xxx
+//
+// This reads 320x200 floats from "file.xxx".
+//
+// The contents of [ ] are a list of "tokens", separated by ","
+//
+// Each token is a character followed by its value
+//
+// Valid characters with their meaning:
+//
+// w = width
+// h = height
+// d = pixel dimension (e.g. 1 or 3)
+//
+// t =  one of "INT8", "UINT8", "INT16", "UINT16", "INT32", "UINT32", "INT64",
+// "UINT64", "FLOAT", "DOUBLE", "LONGDOUBLE", "HALF", "UINT1",
+// "UINT2", "UINT4", "CHAR", "SHORT", "INT", "LONG", "LONGLONG",
+//
+// o = offset bytes to be ignored from the start of the file
+//     (if negative, ignored from the byte after th end of the file)
+//     ((default=-1 == EOF))
+//
+// b = 0,1 wether pixel channels are contiguous or broken into planes
+//
+// e = 0,1 controls the endianness.  By default, the native one
+//
+//
+// All the numeric fields can be read from the same file.  For example,
+// "w@44/2" says that the width is read from position 44 of the file
+// as an uint16, etc.
+//
 
 // if f ~ /RAW[.*]:.*/ return the position of the colon
 static char *raw_prefix(const char *f)
@@ -2033,10 +2111,10 @@ static int parse_raw_binary_image_explicit(struct iio_image *x,
 	(void)broken_pixels;
 	size_t nsamples = w*h*pd;
 	size_t ss = iio_type_size(sample_type);
-	if (ndata != header_bytes + nsamples*ss) {
-		fprintf(stderr, "bad raw file size (%zu != %d + %zu)",
-				ndata, header_bytes, nsamples);
-		return 1;
+	if (ndata < header_bytes + nsamples*ss) {
+		fprintf(stderr, "WARNING:bad raw file size (%zu != %d + %zu)",
+				ndata, header_bytes, nsamples*ss);
+		//return 1;
 	}
 	int sizes[2] = {w, h};
 	iio_image_build_independent(x, 2, sizes, sample_type, pd);
@@ -2253,7 +2331,7 @@ static int read_raw_named_image(struct iio_image *x, const char *filespec)
 
 
 
-// WHATEVER reader {{{2
+// WHATEVER reader                                                          {{{2
 
 //static int read_image(struct iio_image*, const char *);
 static int read_image_f(struct iio_image*, FILE *);
@@ -2286,8 +2364,8 @@ static int read_beheaded_whatever(struct iio_image *x,
 	return r;
 }
 
-// individual format writers {{{1
-// PNG writer {{{2
+// individual format writers                                                {{{1
+// PNG writer                                                               {{{2
 
 #ifdef I_CAN_HAS_LIBPNG
 
@@ -2344,7 +2422,7 @@ static void iio_save_image_as_png(const char *filename, struct iio_image *x)
 
 #endif//I_CAN_HAS_LIBPNG
 
-// TIFF writer {{{2
+// TIFF writer                                                              {{{2
 
 #ifdef I_CAN_HAS_LIBTIFF
 
@@ -2438,7 +2516,7 @@ static void iio_save_image_as_tiff_smarter(const char *filename,
 #endif//I_CAN_HAS_LIBTIFF
 
 
-// JUV writer {{{2
+// JUV writer                                                               {{{2
 static void iio_save_image_as_juv(const char *filename, struct iio_image *x)
 {
 	assert(x->type == IIO_TYPE_FLOAT);
@@ -2461,7 +2539,7 @@ static void iio_save_image_as_juv(const char *filename, struct iio_image *x)
 }
 
 
-// FLO writer {{{2
+// FLO writer                                                               {{{2
 static void iio_save_image_as_flo(const char *filename, struct iio_image *x)
 {
 	assert(x->type == IIO_TYPE_FLOAT);
@@ -2479,7 +2557,7 @@ static void iio_save_image_as_flo(const char *filename, struct iio_image *x)
 	xfclose(f);
 }
 
-// RIM writer {{{2
+// RIM writer                                                               {{{2
 
 static void rim_putshort(FILE *f, uint16_t n)
 {
@@ -2529,7 +2607,7 @@ static void iio_save_image_as_rim_cimage(const char *fname, struct iio_image *x)
 	xfclose(f);
 }
 
-// guess format using magic {{{1
+// guess format using magic                                                 {{{1
 
 
 static char add_to_header_buffer(FILE *f, uint8_t *buf, int *nbuf, int bufmax)
@@ -2647,7 +2725,47 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 	return IIO_FORMAT_UNRECOGNIZED;
 }
 
-// dispatcher {{{1
+static bool seekable_filenameP(const char *filename)
+{
+	if (filename[0] == '-')
+		return false;
+#ifdef I_CAN_POSIX
+	FILE *f = xfopen(filename, "r");
+	int r = lseek(f, 0, SEEK_CUR);
+	xfclose(f);
+	return r != -1;
+#else
+	return true;
+#endif
+}
+
+static bool comma_named_tiff(const char *filename)
+{
+	char *comma = strrchr(filename, ',');
+	if (!comma) return false;
+
+	int lnumber = strlen(comma + 1);
+	int ldigits = strspn(comma + 1, "0123456789");
+	if (lnumber != ldigits) return false;
+
+	char rfilename[FILENAME_MAX];
+	strncpy(rfilename, filename, FILENAME_MAX);
+	comma = rfilename + (comma - filename);
+	*comma = '\0';
+
+	bool retval = false;
+	if (seekable_filenameP(rfilename)) {
+		FILE *f = xfopen(rfilename, "r");
+		int bufmax = 0x100, nbuf, format;
+		char buf[0x100] = {0};
+		format = guess_format(f, buf, &nbuf, bufmax);
+		retval = format == IIO_FORMAT_TIFF;
+		xfclose(f);
+	}
+	return retval;
+}
+
+// dispatcher                                                               {{{1
 
 // "centralized dispatcher"
 static
@@ -2709,7 +2827,7 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 
 
 
-// general image reader {{{1
+// general image reader                                                     {{{1
 
 
 
@@ -2763,6 +2881,16 @@ static int read_image(struct iio_image *x, const char *fname)
 			((char*)x->data)[i] = 1;
 		return 0;
 	}
+	if (fname == strstr(fname, "constant:")) {
+		float value;
+		int s[2], pd = 1;
+		if (3 == sscanf(fname+9, "%g:%dx%d", &value, s, s+1));
+		else fail("bad semantical name \"%s\"", fname);
+		iio_image_build_independent(x, 2, s, IIO_TYPE_CHAR, pd);
+		for (int i = 0; i < *s*s[1]*pd; i++)
+			((char*)x->data)[i] = value;
+		return 0;
+	}
 
 
 #ifdef I_CAN_HAS_WGET
@@ -2783,7 +2911,13 @@ static int read_image(struct iio_image *x, const char *fname)
 	} else
 #endif//I_CAN_HAS_WGET
 
-	if (raw_prefix(fname)) {
+	if (false) {
+		;
+#ifdef I_CAN_HAS_LIBTIFF
+	} else if (comma_named_tiff(fname)) {
+		r = read_whole_tiff(x, fname);
+#endif//I_CAN_HAS_LIBTIFF
+	} else if (raw_prefix(fname)) {
 		r = read_raw_named_image(x, fname);
 	} else {
 		FILE *f = xfopen(fname, "r");
@@ -2812,7 +2946,7 @@ static void iio_save_image_default(const char *filename, struct iio_image *x);
 
 
 
-// API (input) {{{1
+// API (input)                                                              {{{1
 
 static void *rfail(const char *fmt, ...)
 {
@@ -2827,21 +2961,21 @@ static void *rfail(const char *fmt, ...)
 	return NULL;
 }
 
-// 2D only
-static
-void *iio_read_image(const char *fname, int *w, int *h, int desired_sample_type)
-{
-	struct iio_image x[1];
-	int r = read_image(x, fname);
-	if (r) return rfail("could not read image");
-	if (x->dimension != 2) {
-		x->dimension = 2;
-	}
-	*w = x->sizes[0];
-	*h = x->sizes[1];
-	iio_convert_samples(x, desired_sample_type);
-	return x->data;
-}
+//// 2D only
+//static
+//void *iio_read_image(const char *fname, int *w, int *h, int desired_sample_type)
+//{
+//	struct iio_image x[1];
+//	int r = read_image(x, fname);
+//	if (r) return rfail("could not read image");
+//	if (x->dimension != 2) {
+//		x->dimension = 2;
+//	}
+//	*w = x->sizes[0];
+//	*h = x->sizes[1];
+//	iio_convert_samples(x, desired_sample_type);
+//	return x->data;
+//}
 
 // API 2D
 float *iio_read_image_float_vec(const char *fname, int *w, int *h, int *pd)
@@ -3007,7 +3141,7 @@ uint8_t ***iio_read_image_uint8_matrix_vec(const char *fname,
 	*w = x->sizes[0];
 	*h = x->sizes[1];
 	*pd = x->pixel_dimension;
-	fprintf(stderr, "matrix_vec pd = %d\n", *pd);
+	//fprintf(stderr, "matrix_vec pd = %d\n", *pd);
 	iio_convert_samples(x, IIO_TYPE_UINT8);
 	return wrap_2dmatrix_around_data(x->data, *w, *h, *pd);
 }
@@ -3168,11 +3302,27 @@ int *iio_read_image_int(const char *fname, int *w, int *h)
 // API 2D
 uint8_t *iio_read_image_uint8(const char *fname, int *w, int *h)
 {
-	return iio_read_image(fname, w, h, IIO_TYPE_UINT8);
+	struct iio_image x[1];
+	int r = read_image(x, fname);
+	if (r) return rfail("could not read image");
+	if (x->dimension != 2) {
+		x->dimension = 2;
+		return rfail("non 2d image");
+	}
+	if (x->pixel_dimension == 3)
+		iio_hacky_uncolorize(x);
+	if (x->pixel_dimension == 4)
+		iio_hacky_uncolorizea(x);
+	if (x->pixel_dimension != 1)
+		return rfail("non-scalarizable image");
+	*w = x->sizes[0];
+	*h = x->sizes[1];
+	iio_convert_samples(x, IIO_TYPE_UINT8);
+	return x->data;
 }
 
 
-// API (output) {{{1
+// API (output)                                                             {{{1
 
 static bool this_float_is_actually_a_byte(float x)
 {
@@ -3488,6 +3638,15 @@ void iio_save_image_double_vec(char *filename, double *data,
 	x->data = data;
 	x->contiguous_data = false;
 	iio_save_image_default(filename, x);
+}
+
+void iio_save_image_double_split(char *filename, double *data,
+		int w, int h, int pd)
+{
+	double *rdata = xmalloc(w*h*pd*sizeof*rdata);
+	recover_broken_pixels_double(rdata, data, w*h, pd);
+	iio_save_image_double_vec(filename, rdata, w, h, pd);
+	xfree(rdata);
 }
 
 void iio_save_image_float(char *filename, float *data, int w, int h)
