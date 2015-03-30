@@ -78,6 +78,7 @@ oflow_shader = """
    """
 
 hsv_shader = """
+    // OLD AND WRONG
     vec4 hsvtorgb(vec4 colo)
     {
        vec4 outp;
@@ -102,6 +103,13 @@ hsv_shader = """
        return outp;
     }
 
+    vec3 hsv2rgb(vec3 c)
+    {
+        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
   uniform sampler2D src;
   uniform float shader_a;
   uniform float shader_b;
@@ -109,7 +117,10 @@ hsv_shader = """
   void main (void)
   {
        vec4 q = texture2D(src, gl_TexCoord[0].xy);
-       vec4 p = hsvtorgb(q);
+       //vec4 p = hsvtorgb(q);
+       q = vec4(q.x/360.0,q.y,q.z,q.w);
+       vec3 pp = hsv2rgb(q.xyz);
+       vec4 p = vec4(pp.x,pp.y,pp.z,q.w);
 
        gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
 
@@ -142,6 +153,30 @@ rb_shader = """
                   p.x * shader_a + shader_b, 0.0);
       gl_FragColor = clamp(p, 0.0, 1.0);
    }
+   """
+
+depth_shader = """
+    vec3 hsv2rgb(vec3 c)
+    {
+        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+  uniform sampler2D src;
+  uniform float shader_a;
+  uniform float shader_b;
+
+  void main (void)
+  {
+       vec4 q = texture2D(src, gl_TexCoord[0].xy);
+       q = q * shader_a + shader_b;
+       vec3 pp = hsv2rgb(q.xxx);
+       vec4 p = vec4(pp.x,pp.y,pp.z,q.w);
+
+       gl_FragColor = p; //clamp(p * shader_a + shader_b, 0.0, 1.0);
+
+  }
    """
 
 
@@ -738,12 +773,17 @@ def display( window ):
     
 
     ## USE THE SHADER FOR RENDERING THE IMAGE
-    global program, program_rgba, program_hsv, program_rb, program_oflow
+    global program, program_rgba, program_hsv, program_rb, program_oflow, program_depth
     if D.nch == 2 :
        if V.TOGGLE_FLOW_COLORS:
           program  = program_oflow
        else:
           program  = program_rb
+    elif D.nch == 1:
+       if V.TOGGLE_FLOW_COLORS:
+          program  = program_depth
+       else:
+          program  = program_rgba
     else:
        if V.TOGGLE_FLOW_COLORS:
           program  = program_hsv
@@ -978,24 +1018,28 @@ def main():
 # http://python-opengl-examples.blogspot.com.es/
 # http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
 
-    global program, program_rgba, program_hsv, program_rb, program_oflow
-    program_rgba = compileProgram( 
+    global program, program_rgba, program_hsv, program_rb, program_oflow, program_depth
+    program_rgba = compileProgram(
           compileShader(rgba_shader, GL_FRAGMENT_SHADER),
          );
-    program_hsv = compileProgram( 
+    program_hsv = compileProgram(
           compileShader(hsv_shader, GL_FRAGMENT_SHADER),
          );
-    program_oflow = compileProgram( 
+    program_oflow = compileProgram(
           compileShader(oflow_shader, GL_FRAGMENT_SHADER),
          );
-    program_rb = compileProgram( 
+    program_rb = compileProgram(
           compileShader(rb_shader, GL_FRAGMENT_SHADER),
+         );
+    program_depth = compileProgram(
+          compileShader(depth_shader, GL_FRAGMENT_SHADER),
          );
     
     glLinkProgram(program_rgba)
     glLinkProgram(program_hsv)
     glLinkProgram(program_oflow)
     glLinkProgram(program_rb)
+    glLinkProgram(program_depth)
 
     program = program_rgba
     
