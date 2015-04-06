@@ -2,6 +2,7 @@
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
+# 04/2015: use os.stat to detect changes file changes
 # v03 : faster image load with piio.read_buffer avoids passing trough numpy
 #       fragment shader color manipulation (optic flow)
 # v02 : use fragment shader for the contrast change, uses GL_RGBF32 as internal format
@@ -338,6 +339,7 @@ class ImageState:
    imageBitmapTiles=0
    v_max = 0
    v_min = 0
+   mtime = 0
 
    def get_image_point(self,x,y):
       if x>=0 and y>=0 and x<self.w and y<self.h:
@@ -391,6 +393,11 @@ def change_image(new_idx):
    new_idx = new_idx % NUM_FILES
    new_filename = sys.argv[new_idx+1]
 
+   from os import stat 
+   if new_idx in DD:
+      if new_filename != ' ' and DD[new_idx].mtime < stat(new_filename).st_mtime:
+         print new_filename + ' has changed. Reloading...'
+         DD.pop(new_idx)
 
    if new_idx not in DD:
       D = DD[new_idx] = ImageState()
@@ -398,8 +405,10 @@ def change_image(new_idx):
       tic()
       # read the image
       D.filename = new_filename
+      if new_filename != '-':
+         D.mtime    = (stat(new_filename).st_mtime)
       D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
-      V.data_min, V.data_max=  D.v_min,D.v_max 
+      V.data_min, V.data_max =  D.v_min,D.v_max 
       setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       toc('loadImage+data->RGBbitmap+texture setup')
 
@@ -951,6 +960,9 @@ def main():
     # as we must find out the image size before creating the window 
     D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
     D.filename = I1
+    if I1 != '-':
+      from os import stat
+      D.mtime    = (stat(I1).st_mtime)
     V.data_min, V.data_max=  D.v_min,D.v_max 
     V.reset_scale_bias()
     toc('loadImage+data->RGBbitmap')
@@ -1019,19 +1031,19 @@ def main():
 # http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
 
     global program, program_rgba, program_hsv, program_rb, program_oflow, program_depth
-    program_rgba = compileProgram(
+    program_rgba = compileProgram( 
           compileShader(rgba_shader, GL_FRAGMENT_SHADER),
          );
-    program_hsv = compileProgram(
+    program_hsv = compileProgram( 
           compileShader(hsv_shader, GL_FRAGMENT_SHADER),
          );
-    program_oflow = compileProgram(
+    program_oflow = compileProgram( 
           compileShader(oflow_shader, GL_FRAGMENT_SHADER),
          );
-    program_rb = compileProgram(
+    program_rb = compileProgram( 
           compileShader(rb_shader, GL_FRAGMENT_SHADER),
          );
-    program_depth = compileProgram(
+    program_depth = compileProgram( 
           compileShader(depth_shader, GL_FRAGMENT_SHADER),
          );
     
