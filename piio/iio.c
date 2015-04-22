@@ -104,6 +104,7 @@
 #define IIO_FORMAT_LUM 21
 #define IIO_FORMAT_PCM 22
 #define IIO_FORMAT_ASC 23
+#define IIO_FORMAT_RAW 24
 #define IIO_FORMAT_UNRECOGNIZED (-1)
 
 //
@@ -114,6 +115,7 @@
 #define FORK(n) for(int k=0;k<(int)(n);k++)
 #define FORL(n) for(int l=0;l<(int)(n);l++)
 
+//#define IIO_SHOW_DEBUG_MESSAGES
 #ifdef IIO_SHOW_DEBUG_MESSAGES
 #  define IIO_DEBUG(...) do {\
 	fprintf(stderr,"DEBUG(%s:%d:%s): ",__FILE__,__LINE__,__PRETTY_FUNCTION__);\
@@ -527,9 +529,9 @@ static const char *iio_strfmt(int format)
 	M(TIFF); M(RIM); M(BMP); M(EXR); M(JP2);
 	M(VTK); M(CIMG); M(PAU); M(DICOM); M(PFM); M(NIFTI);
 	M(PCX); M(GIF); M(XPM); M(RAFA); M(FLO); M(LUM); M(JUV);
-	M(PCM); M(ASC);
+	M(PCM); M(ASC); M(RAW);
 	M(UNRECOGNIZED);
-	default: fail("caca de la grossa");
+	default: fail("caca de la grossa (%d)", format);
 	}
 #undef M
 }
@@ -594,6 +596,58 @@ static void iio_image_build_independent(struct iio_image *x,
 	size_t datalength = 1; FORI(dimension) datalength *= sizes[i];
 	size_t datasize = datalength * iio_type_size(type) * pixel_dimension;
 	x->data = xmalloc(datasize);
+}
+
+static void inplace_swap_pixels(struct iio_image *x, int i, int j, int a, int b)
+{
+	if (x->dimension != 2)
+		fail("can only flip 2-dimensional images");
+	int w = x->sizes[0];
+	int h = x->sizes[1];
+	int pixsize = x->pixel_dimension * iio_image_sample_size(x);
+	uint8_t *p = (i + j * w) * pixsize + (uint8_t*)x->data;
+	uint8_t *q = (a + b * w) * pixsize + (uint8_t*)x->data;
+	for (int k = 0; k < pixsize; k++)
+	{
+		uint8_t tmp = p[k];
+		p[k] = q[k];
+		q[k] = tmp;
+	}
+}
+
+static void inplace_flip_horizontal(struct iio_image *x)
+{
+	int w = x->sizes[0];
+	int h = x->sizes[1];
+	for (int j = 0; j < h; j++)
+	for (int i = 0; i < w/2; i++)
+		inplace_swap_pixels(x, i, j, w - i - 1, j);
+}
+
+static void inplace_flip_vertical(struct iio_image *x)
+{
+	int w = x->sizes[0];
+	int h = x->sizes[1];
+	for (int j = 0; j < h/2; j++)
+	for (int i = 0; i < w; i++)
+		inplace_swap_pixels(x, i, j, i, h - j - 1);
+}
+
+static void inplace_transpose(struct iio_image *x)
+{
+	fail("inplace transpose not implemented");
+}
+
+static void inplace_reorient(struct iio_image *x, int orientation)
+{
+	int orx = orientation & 0xff;
+	int ory = (orientation & 0xff00)/0x100;
+	if (isupper(orx))
+		inplace_flip_horizontal(x);
+	if (isupper(ory))
+		inplace_flip_vertical(x);
+	if (toupper(orx) > toupper(ory))
+		inplace_transpose(x);
 }
 
 
@@ -2084,10 +2138,19 @@ static int read_beheaded_asc(struct iio_image *x,
 //
 // e = 0,1 controls the endianness.  By default, the native one
 //
+// r = xy, xY, Xy, XY, yx, Yx, yX, YX
+//         controls the orientation of the coordinates (uppercase=reverse)
 //
 // All the numeric fields can be read from the same file.  For example,
 // "w@44/2" says that the width is read from position 44 of the file
 // as an uint16, etc.
+//
+//
+// Annex: Specifying the RAW type using environment variables.
+//
+// Typically, when IIO fails to recognize the filetype, it tries some desperate
+// measures.  One of this desperate measures is enabled by the environment
+// variable  IIO_RAW, that specifies the "rawstring" of the file to be opened.
 //
 
 // if f ~ /RAW[.*]:.*/ return the position of the colon
@@ -2177,6 +2240,7 @@ static int read_raw_named_image(struct iio_image *x, const char *filespec)
 	int endianness = 0;
 	int sample_type = IIO_TYPE_UINT8;
 	int offset = -1;
+	int orientation = 0;
 
 	// parse description string
 	char *delim = ",", *tok = strtok(description, delim);
@@ -2197,6 +2261,7 @@ static int read_raw_named_image(struct iio_image *x, const char *filespec)
 		case 'b': brokenness      = 1;                 break;
 		case 'e': endianness      = 1;                 break;
 		case 't': sample_type     = iio_inttyp(1+tok); break;
+		case 'r': orientation     = tok[1]+256*tok[2]; break;
 		}
 		tok = strtok(NULL, delim);
 	}
@@ -2235,101 +2300,33 @@ static int read_raw_named_image(struct iio_image *x, const char *filespec)
 			file_contents, file_size,
 			width, height, pixel_dimension,
 			offset, sample_type, brokenness, endianness);
+	if (orientation)
+		inplace_reorient(x, orientation);
 	xfree(file_contents);
 	return r;
 }
 
-//static int write_raw_named_image(const charr *filespec, struct iio_image *x)
-//{
-//	// filespec => description + filename
-//	char *colon = raw_prefix(filespec);
-//	size_t desclen = colon - filespec - 5;
-//	char description[desclen+1];
-//	char *filename = colon + 1;
-//	memcpy(description, filespec+4, desclen);
-//	description[desclen] = '\0';
-//
-//	// write data to file
-//	long file_size;
-//	void *file_contents = NULL;
-//	{
-//		FILE *f = xfopen(filename, "w");
-//		file_contents = load_rest_of_file(&file_size, f, NULL, 0);
-//		xfclose(f);
-//	}
-//
-//	// fill-in data description
-//	int width = -1;
-//	int height = -1;
-//	int pixel_dimension = 1;
-//	int brokenness = 0;
-//	int endianness = 0;
-//	int sample_type = IIO_TYPE_UINT8;
-//	int offset = -1;
-//
-//	// parse description string
-//	char *delim = ",", *tok = strtok(description, delim);
-//	int field;
-//	while (tok) {
-//		IIO_DEBUG("\ttoken = %s\n", tok);
-//		if (tok[1] == '@')
-//			field = raw_gfp(file_contents, file_size, 2+tok,
-//					endianness);
-//		else
-//			field = atoi(1+tok);
-//		IIO_DEBUG("\tfield=%d\n", field);
-//		switch(*tok) {
-//		case 'w': width           = field;       break;
-//		case 'h': height          = field;       break;
-//		case 'p': pixel_dimension = field;       break;
-//		case 'o': offset          = field;       break;
-//		case 'b': brokenness      = 1;                 break;
-//		case 'e': endianness      = 1;                 break;
-//		case 't': sample_type     = iio_inttyp(1+tok); break;
-//		}
-//		tok = strtok(NULL, delim);
-//	}
-//	int sample_size = iio_type_size(sample_type);
-//
-//	IIO_DEBUG("w = %d\n", width);
-//	IIO_DEBUG("h = %d\n", height);
-//	IIO_DEBUG("p = %d\n", pixel_dimension);
-//	IIO_DEBUG("o = %d\n", offset);
-//	IIO_DEBUG("b = %d\n", brokenness);
-//	IIO_DEBUG("t = %s\n", iio_strtyp(sample_type));
-//
-//	// estimate missing dimensions
-//	IIO_DEBUG("before estimation w=%d h=%d o=%d\n", width, height, offset);
-//	int pd = pixel_dimension;
-//	int ss = sample_size;
-//	if (offset < 0 && width > 0 && height > 0)
-//		offset = file_size - width * height * pd * ss;
-//	if (width < 0 && offset > 0 && height > 0)
-//		width = (file_size - offset)/(height * pd * ss);
-//	if (height < 0 && offset > 0 && width > 0)
-//		height = (file_size - offset)/(width * pd * ss);
-//	if (offset < 0) offset = 0;
-//	if (height < 0) height = file_size/(width * pd * ss);
-//	if (width  < 0) width  = file_size/(height * pd * ss);
-//	if (offset < 0 || width < 0 || height < 0)
-//		fail("could not determine width, height and offset"
-//				"(got %d,%d,%d)", width, height, offset);
-//	IIO_DEBUG("after estimation w=%d h=%d o=%d\n", width, height, offset);
-//
-//	int used_data_size = offset+width*height*pd*ss;
-//	if (used_data_size > file_size)
-//		fail("raw file is not large enough");
-//
-//	int r = parse_raw_binary_image_explicit(x,
-//			file_contents, file_size,
-//			width, height, pixel_dimension,
-//			offset, sample_type, brokenness, endianness);
-//	xfree(file_contents);
-//	return r;
-//}
+// read a RAW image specified by the IIO_RAW environment
+// caveat: the image *must* be a named file, not a pipe
+// (this is for simplicity of the implementation, this restriction can be
+// removed when necessary)
+static int read_beheaded_raw(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	const char *fn;
+	fn = global_variable_containing_the_name_of_the_last_opened_file;
+	if (!fn)
+		return 1;
 
+	char *rp = getenv("IIO_RAW");
+	if (!rp)
+		return 2;
 
-
+	char buf[FILENAME_MAX];
+	snprintf(buf, FILENAME_MAX, "RAW[%s]:%s", rp, fn);
+	IIO_DEBUG("simulating read of filename \"%s\"\n", buf);
+	return read_raw_named_image(x, buf);
+}
 
 // WHATEVER reader                                                          {{{2
 
@@ -2722,6 +2719,10 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 	if (4 == sscanf((char*)b, "%d %d %d %d\n", t, t+1, t+2, t+3) && t[2]==1)
 		return IIO_FORMAT_ASC;
 
+
+	if (getenv("IIO_RAW"))
+		return IIO_FORMAT_RAW;
+
 	return IIO_FORMAT_UNRECOGNIZED;
 }
 
@@ -2783,6 +2784,7 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 	case IIO_FORMAT_PCM:   return read_beheaded_pcm (x, f, h, hn);
 	case IIO_FORMAT_ASC:   return read_beheaded_asc (x, f, h, hn);
 	case IIO_FORMAT_BMP:   return read_beheaded_bmp (x, f, h, hn);
+	case IIO_FORMAT_RAW:   return read_beheaded_raw (x, f, h, hn);
 
 #ifdef I_CAN_HAS_LIBPNG
 	case IIO_FORMAT_PNG:   return read_beheaded_png (x, f, h, hn);
@@ -2920,6 +2922,7 @@ static int read_image(struct iio_image *x, const char *fname)
 	} else if (raw_prefix(fname)) {
 		r = read_raw_named_image(x, fname);
 	} else {
+		// call CORE
 		FILE *f = xfopen(fname, "r");
 		r = read_image_f(x, f);
 		xfclose(f);
@@ -3624,6 +3627,20 @@ void iio_save_image_float_split(char *filename, float *data,
 	recover_broken_pixels_float(rdata, data, w*h, pd);
 	iio_save_image_float_vec(filename, rdata, w, h, pd);
 	xfree(rdata);
+}
+
+void iio_save_image_int_vec(char *filename, int *data,
+		int w, int h, int pd)
+{
+	struct iio_image x[1];
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = pd;
+	x->type = IIO_TYPE_INT;
+	x->data = data;
+	x->contiguous_data = false;
+	iio_save_image_default(filename, x);
 }
 
 void iio_save_image_double_vec(char *filename, double *data,
