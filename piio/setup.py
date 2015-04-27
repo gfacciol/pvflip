@@ -84,9 +84,10 @@ class build_iio(distutils.cmd.Command):
             compiler_preargs += ['-m64', '-O3', '-fPIC']
         elif arch == 32 and platform.system() == 'Linux':
             compiler_preargs += ['-m32', '-O3']
+        elif arch == 64 and platform.system() == 'Darwin':
+            compiler_preargs += ['-O3', '-arch', 'x86_64']
         elif platform.system() == 'Darwin':
-            #No -O3 on OSX. There's a bug in the clang compiler when using O3.
-            compiler_preargs += ['-O3', '-arch', 'i386', '-arch', 'x86_64']
+            compiler_preargs += ['-O3', '-arch', 'i386']
         
         if platform.system() in ('Windows', 'Microsoft'):
             # Compile with stddecl instead of cdecl (-mrtd). 
@@ -115,9 +116,12 @@ class build_iio(distutils.cmd.Command):
         libname = 'iio'
         if arch == 64 and platform.system() != 'Darwin':
             libname += ''
-        if platform.system() == 'Darwin':
+        if arch == 64 and platform.system() == 'Darwin':
             libname = compiler.library_filename(libname, lib_type='shared')
-            compiler.set_executable('linker_so', ['cc', '-dynamiclib', '-arch', 'i386', '-arch', 'x86_64'])
+            compiler.set_executable('linker_so', ['cc', '-dynamiclib', '-arch', 'x86_64'])
+        elif arch == 32 and platform.system() == 'Darwin':
+            libname = compiler.library_filename(libname, lib_type='shared')
+            compiler.set_executable('linker_so', ['cc', '-dynamiclib', '-arch', 'i386'])
         else:
             libname = compiler.library_filename(libname, lib_type='shared')
         linker_preargs = [ '-lpng', '-ljpeg', '-ltiff']
