@@ -104,7 +104,8 @@
 #define IIO_FORMAT_LUM 21
 #define IIO_FORMAT_PCM 22
 #define IIO_FORMAT_ASC 23
-#define IIO_FORMAT_RAW 24
+#define IIO_FORMAT_PDS 24
+#define IIO_FORMAT_RAW 25
 #define IIO_FORMAT_UNRECOGNIZED (-1)
 
 //
@@ -529,7 +530,7 @@ static const char *iio_strfmt(int format)
 	M(TIFF); M(RIM); M(BMP); M(EXR); M(JP2);
 	M(VTK); M(CIMG); M(PAU); M(DICOM); M(PFM); M(NIFTI);
 	M(PCX); M(GIF); M(XPM); M(RAFA); M(FLO); M(LUM); M(JUV);
-	M(PCM); M(ASC); M(RAW);
+	M(PCM); M(ASC); M(RAW); M(PDS);
 	M(UNRECOGNIZED);
 	default: fail("caca de la grossa (%d)", format);
 	}
@@ -2090,6 +2091,115 @@ static int read_beheaded_asc(struct iio_image *x,
 	return 0;
 }
 
+// PDS reader                                                               {{{2
+
+static int getlinen(char *l, int n, FILE *f)
+{
+	int c, i = 0;
+	while (i < n-1 && (c = fgetc(f)) != EOF && c != '\n')
+		l[i++] = c;
+	l[i] = '\0';
+	return i;
+}
+
+static void pds_parse_line(char *key, char *value, char *line)
+{
+	int r = sscanf(line, "%s = %s\n", key, value);
+	if (r != 2) {
+		*key = *value = '\0'; return; }
+}
+
+static int read_beheaded_pds(struct iio_image *x,
+		FILE *f, char *header, int nheader)
+{
+	// check that the file is named, and not a pipe
+	const char *fn;
+	fn = global_variable_containing_the_name_of_the_last_opened_file;
+	if (!fn)
+		return 1;
+
+	// get an object name, if different to "^IMAGE"
+	char *object_id = getenv("IIO_PDS_OBJECT");
+	if (!object_id)
+		object_id = "^IMAGE";
+
+	// parse the header and obtain the image dimensions and type name
+	int n, nmax = 1000, cx = 0;
+	char line[nmax], key[nmax], value[nmax];
+	int rbytes = -1, w = -1, h = -1, spp = 1, bps = 1, obj = -1;
+	int sfmt = SAMPLEFORMAT_UINT;
+	bool in_object = false;
+	bool flip_h = false, flip_v = false, allturn = false;
+	while (n = getlinen(line, nmax, f) && cx++ < nmax)
+	{
+		pds_parse_line(key, value, line);
+		if (!*key || !*value) continue;
+		IIO_DEBUG("PDS \"%s\" = \"%s\"\n", key, value);
+		if (!strcmp(key, "RECORD_BYTES")) rbytes = atoi(value);
+		if (!strcmp(key, object_id))      obj = atoi(value);
+		if (!strcmp(key, "OBJECT") && !strcmp(value, object_id+1))
+			in_object = true;
+		if (!in_object) continue;
+		if (!strcmp(key, "LINES"))        h = atoi(value);
+		if (!strcmp(key, "LINE_SAMPLES")) w = atoi(value);
+		if (!strcmp(key, "SAMPLE_BITS"))  bps = atoi(value);
+		if (!strcmp(key, "BANDS"))        spp = atoi(value);
+		if (!strcmp(key, "SAMPLE_TYPE")) {
+			if (strstr(value, "REAL")) sfmt = SAMPLEFORMAT_IEEEFP;
+			if (strstr(value, "UNSIGNED")) sfmt = SAMPLEFORMAT_UINT;
+		}
+		if (!strcmp(key, "SAMPLE_DISPLAY_DIRECTION"))
+			flip_h = allturn !=! strcmp(value, "RIGHT");
+		if (!strcmp(key, "LINE_DISPLAY_DIRECTION"))
+			flip_v = allturn !=! strcmp(value, "DOWN");
+		if (!strcmp(key, "END_OBJECT") && !strcmp(value, object_id+1))
+			break;
+	}
+
+	IIO_DEBUG("rbytes = %d\n", rbytes);
+	IIO_DEBUG("object_id = %s\n", object_id);
+	IIO_DEBUG("obj = %d\n", obj);
+	IIO_DEBUG("w = %d\n", w);
+	IIO_DEBUG("h = %d\n", h);
+	IIO_DEBUG("bps = %d\n", bps);
+	IIO_DEBUG("spp = %d\n", spp);
+
+	// identify the sample type
+	int typ = -1;
+	if (sfmt==SAMPLEFORMAT_IEEEFP && bps==32) typ = IIO_TYPE_FLOAT;
+	if (sfmt==SAMPLEFORMAT_IEEEFP && bps==64) typ = IIO_TYPE_DOUBLE;
+	if (sfmt==SAMPLEFORMAT_UINT && bps==8)    typ = IIO_TYPE_UINT8;
+	if (sfmt==SAMPLEFORMAT_UINT && bps==16)   typ = IIO_TYPE_UINT16;
+	if (sfmt==SAMPLEFORMAT_UINT && bps==32)   typ = IIO_TYPE_UINT32;
+	assert(typ > 0);
+
+	// fill-in the image struct
+	x->dimension = 2;
+	x->sizes[0] = w;
+	x->sizes[1] = h;
+	x->pixel_dimension = spp;
+	x->type = typ;
+	x->contiguous_data = false;
+
+	// alloc memory for image data
+	int size = w * h * spp * (bps/8);
+	x->data = xmalloc(size);
+
+	// read data
+	n = fseek(f, rbytes * (obj - 1) , SEEK_SET);
+	if (n) { free(x->data); return 2; }
+	n = fread(x->data, size, 1, f);
+	if (n != 1) { free(x->data); return 3; }
+
+	// if necessary, transpose data
+	if (flip_h) inplace_flip_horizontal(x);
+	if (flip_v) inplace_flip_vertical(x);
+
+	// return
+	return 0;
+}
+
+
 // RAW reader                                                               {{{2
 
 // Note: there are two raw readers, either
@@ -2554,6 +2664,23 @@ static void iio_save_image_as_flo(const char *filename, struct iio_image *x)
 	xfclose(f);
 }
 
+// PFM writer                                                               {{{2
+static void iio_save_image_as_pfm(const char *filename, struct iio_image *x)
+{
+	assert(x->type == IIO_TYPE_FLOAT);
+	assert(x->dimension == 2);
+	assert(x->pixel_dimension == 1 || x->pixel_dimension == 3);
+	FILE *f = xfopen(filename, "w");
+	int dimchar = 1 < x->pixel_dimension ? 'F' : 'f';
+	int w = x->sizes[0];
+	int h = x->sizes[1];
+	float scale = -1;
+	fprintf(f, "P%c\n%d %d\n%g\n", dimchar, w, h, scale);
+	fwrite(x->data, w * h * x->pixel_dimension * sizeof(float), 1 ,f);
+	xfclose(f);
+}
+
+
 // RIM writer                                                               {{{2
 
 static void rim_putshort(FILE *f, uint16_t n)
@@ -2689,6 +2816,9 @@ static int guess_format(FILE *f, char *buf, int *nbuf, int bufmax)
 	if (b[0]=='P' && b[1]=='I' && b[2]=='E' && b[3]=='H')
 		return IIO_FORMAT_FLO;
 
+	if (b[0]=='P' && b[1]=='D' && b[2]=='S' && b[3]=='_')
+		return IIO_FORMAT_PDS;
+
 	b[4] = add_to_header_buffer(f, b, nbuf, bufmax);
 	b[5] = add_to_header_buffer(f, b, nbuf, bufmax);
 	b[6] = add_to_header_buffer(f, b, nbuf, bufmax);
@@ -2784,6 +2914,7 @@ int read_beheaded_image(struct iio_image *x, FILE *f, char *h, int hn, int fmt)
 	case IIO_FORMAT_PCM:   return read_beheaded_pcm (x, f, h, hn);
 	case IIO_FORMAT_ASC:   return read_beheaded_asc (x, f, h, hn);
 	case IIO_FORMAT_BMP:   return read_beheaded_bmp (x, f, h, hn);
+	case IIO_FORMAT_PDS:   return read_beheaded_pds (x, f, h, hn);
 	case IIO_FORMAT_RAW:   return read_beheaded_raw (x, f, h, hn);
 
 #ifdef I_CAN_HAS_LIBPNG
@@ -3383,6 +3514,11 @@ static void iio_save_image_default(const char *filename, struct iio_image *x)
 	if (string_suffix(filename, ".flo") && typ == IIO_TYPE_FLOAT
 				&& x->pixel_dimension == 2) {
 		iio_save_image_as_flo(filename, x);
+		return;
+	}
+	if (string_suffix(filename, ".pfm") && typ == IIO_TYPE_FLOAT
+		&& (x->pixel_dimension == 1 || x->pixel_dimension == 3)) {
+		iio_save_image_as_pfm(filename, x);
 		return;
 	}
 	if (string_suffix(filename, ".mw") && typ == IIO_TYPE_FLOAT
