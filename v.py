@@ -175,7 +175,7 @@ depth_shader_hsv = """
        vec3 pp = hsv2rgb(q.xxx);
        vec4 p = vec4(pp.x,pp.y,pp.z,q.w);
 
-       gl_FragColor = clamp(p , 0.0, 1.0);
+       gl_FragColor = p; //clamp(p , 0.0, 1.0);
 
   }
    """
@@ -204,7 +204,7 @@ void jet(float x, int& r, int& g, int& b)
   void main (void)
   {
        vec4 q = texture2D(src, gl_TexCoord[0].xy);
-       q = q * shader_a + shader_b;
+       q = 1.0 - (q * shader_a + shader_b);
        if(q.x < 0.0) q.x = -0.05;
        if(q.x > 1.0) q.x =  1.05;
        q.x = q.x/1.15 + 0.1;
@@ -852,7 +852,7 @@ def display( window ):
     else:
        V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 2
        if V.TOGGLE_FLOW_COLORS == 1:
-          program  = SHADER_PROGRAMS['dhsv']
+          program  = SHADER_PROGRAMS['hsv']
        else:
           program  = SHADER_PROGRAMS['rgba']
 
