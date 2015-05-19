@@ -156,7 +156,7 @@ rb_shader = """
    }
    """
 
-depth_shader = """
+depth_shader_hsv = """
     vec3 hsv2rgb(vec3 c)
     {
         vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -175,10 +175,61 @@ depth_shader = """
        vec3 pp = hsv2rgb(q.xxx);
        vec4 p = vec4(pp.x,pp.y,pp.z,q.w);
 
-       gl_FragColor = p; //clamp(p * shader_a + shader_b, 0.0, 1.0);
+       gl_FragColor = clamp(p , 0.0, 1.0);
 
   }
    """
+
+depth_shader_jet = """
+/*
+// translate value x in [0..1] into color triplet using "jet" color map
+// if out of range, use darker colors
+// variation of an idea by http://www.metastine.com/?p=7
+void jet(float x, int& r, int& g, int& b)
+{
+    if (x < 0) x = -0.05;
+    if (x > 1) x =  1.05;
+    x = x / 1.15 + 0.1; // use slightly asymmetric range to avoid darkest shade
+ of blue.
+    r = max(0, min(255, round(255 * (1.5 - 4*fabs(x - .75)))));
+    g = max(0, min(255, round(255 * (1.5 - 4*fabs(x - .5 )))));
+    b = max(0, min(255, round(255 * (1.5 - 4*fabs(x - .25)))));
+}
+*/
+
+  uniform sampler2D src;
+  uniform float shader_a;
+  uniform float shader_b;
+
+  void main (void)
+  {
+       vec4 q = texture2D(src, gl_TexCoord[0].xy);
+       q = q * shader_a + shader_b;
+       if(q.x < 0.0) q.x = -0.05;
+       if(q.x > 1.0) q.x =  1.05;
+       q.x = q.x/1.15 + 0.1;
+       vec4 p;
+       p.x = 1.5 - abs(q.x - .75)*4.0;
+       p.y = 1.5 - abs(q.x - .50)*4.0;
+       p.z = 1.5 - abs(q.x - .25)*4.0;
+       p.w = 1.0;
+
+       gl_FragColor = clamp(p, 0.0, 1.0);
+
+  }
+   """
+
+SHADERS = { 
+      'rgba' : rgba_shader,
+      'hsv'  : hsv_shader,
+      'oflow': oflow_shader,
+      'rb'   : rb_shader, 
+      'dhsv' : depth_shader_hsv,
+      'djet' :depth_shader_jet
+      }
+SHADER_PROGRAMS = {}
+
+
 
 
 #### INTERFACE STATE
@@ -622,7 +673,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # reset visualization
     if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
-       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 2
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 3
        V.redisp = 1
 
 
@@ -782,22 +833,28 @@ def display( window ):
     
 
     ## USE THE SHADER FOR RENDERING THE IMAGE
-    global program, program_rgba, program_hsv, program_rb, program_oflow, program_depth
+    global program, SHADERS, SHADER_PROGRAMS
+    program = SHADER_PROGRAMS['rgba']
+
     if D.nch == 2 :
-       if V.TOGGLE_FLOW_COLORS:
-          program  = program_oflow
+       V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 2
+       if V.TOGGLE_FLOW_COLORS == 1:
+          program  = SHADER_PROGRAMS['oflow']
        else:
-          program  = program_rb
+          program  = SHADER_PROGRAMS['rb']
     elif D.nch == 1:
-       if V.TOGGLE_FLOW_COLORS:
-          program  = program_depth
+       if V.TOGGLE_FLOW_COLORS == 1:
+          program  = SHADER_PROGRAMS['djet']
+       elif V.TOGGLE_FLOW_COLORS == 2:
+          program  = SHADER_PROGRAMS['dhsv']
        else:
-          program  = program_rgba
+          program  = SHADER_PROGRAMS['rgba']
     else:
-       if V.TOGGLE_FLOW_COLORS:
-          program  = program_hsv
+       V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 2
+       if V.TOGGLE_FLOW_COLORS == 1:
+          program  = SHADER_PROGRAMS['dhsv']
        else:
-          program  = program_rgba
+          program  = SHADER_PROGRAMS['rgba']
 
     glUseProgram(program)   
     # set the values of the shader uniform variables (global)
@@ -1021,7 +1078,6 @@ def main():
     print (0,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
 
 
-
 ##########
 ######## SETUP FRAGMENT SHADER FOR CONTRAST CHANGE
 ##########
@@ -1030,30 +1086,14 @@ def main():
 # http://python-opengl-examples.blogspot.com.es/
 # http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
 
-    global program, program_rgba, program_hsv, program_rb, program_oflow, program_depth
-    program_rgba = compileProgram( 
-          compileShader(rgba_shader, GL_FRAGMENT_SHADER),
-         );
-    program_hsv = compileProgram( 
-          compileShader(hsv_shader, GL_FRAGMENT_SHADER),
-         );
-    program_oflow = compileProgram( 
-          compileShader(oflow_shader, GL_FRAGMENT_SHADER),
-         );
-    program_rb = compileProgram( 
-          compileShader(rb_shader, GL_FRAGMENT_SHADER),
-         );
-    program_depth = compileProgram( 
-          compileShader(depth_shader, GL_FRAGMENT_SHADER),
-         );
-    
-    glLinkProgram(program_rgba)
-    glLinkProgram(program_hsv)
-    glLinkProgram(program_oflow)
-    glLinkProgram(program_rb)
-    glLinkProgram(program_depth)
+    global program, SHADERS, SHADER_PROGRAMS
+    for s in SHADERS.keys():
+       SHADER_PROGRAMS[s] = compileProgram(
+             compileShader(SHADERS[s], GL_FRAGMENT_SHADER),
+             );
+       glLinkProgram( SHADER_PROGRAMS[s] )
 
-    program = program_rgba
+    program = SHADER_PROGRAMS['rgba']
     
 
     #global program
