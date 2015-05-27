@@ -46,16 +46,21 @@ if sys.platform.startswith('win'):
       lib_basename = 'glfw-3.0.4.bin.WIN32/lib-mingw/glfw3'
 elif sys.platform == 'darwin':
    lib_ext = '.dylib'
-   lib_basename = 'libglfw'
-else:
+   lib_basename = 'glfw-3.0.4.bin.MAC64/libglfw'
+else: # linux?
    lib_ext = '.so'
    lib_basename = 'libglfw'
 here  = os.path.dirname(__file__)
 libfile  = os.path.join(here, lib_basename+lib_ext)
 
+# if the precompiled libs are not valid reset lib filename and build
+if not os.path.exists(libfile):
+   lib_basename = 'libglfw'   
+   libfile  = os.path.join(here, lib_basename+lib_ext)
+
 if os.path.exists(libfile):
    _glfw_file = libfile
-else:
+else:                         
    print 'BUILDING GLFW...'
    os.system('mkdir -p %s/build; cd %s/build; cmake  -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw%s %s '%(here,here, lib_ext, here))
    print 'CLEANING BUILD...'

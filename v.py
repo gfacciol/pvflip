@@ -736,7 +736,7 @@ def keyboard_callback(window, key, scancode, action, mods):
        glfw.glfwSetWindowShouldClose(window,1)
        global x0,y0,w0,h0
        print(x0,y0,w0,h0)
-       exit(0)
+       sys.exit(0)
 
 
 
@@ -774,8 +774,8 @@ def display( window ):
     # ideally winx,winy should be equal to D.w,D.h BUT if the 
     # image is larger than the screen glutReshapeWindow(D.w,D.h) 
     # will fail and winx,winy will be truncated to the size of the screen
-#    winx, winy= glfw.glfwGetFramebufferSize(window)
-    winx, winy= glfw.glfwGetWindowSize(window)
+    winx, winy= glfw.glfwGetFramebufferSize(window)
+#    winx, winy= glfw.glfwGetWindowSize(window)
     V.winx,V.winy=winx,winy
 
     glViewport(0, 0, winx, winy);
@@ -998,7 +998,7 @@ def main():
              from os import stat
              stat(sys.argv[1])
           except OSError:
-             exit(1)
+             sys.exit(1)
        # otherwise use stdin as input (because it should be a pipe)
        else:
           sys.argv.append('-')
@@ -1017,8 +1017,8 @@ def main():
     # as we must find out the image size before creating the window 
     D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
     D.filename = I1
-    if I1 != '-':
-      from os import stat
+    from os import stat, path
+    if I1 != '-' and path.exists(I1):
       D.mtime    = (stat(I1).st_mtime)
     V.data_min, V.data_max=  D.v_min,D.v_max 
     V.reset_scale_bias()
@@ -1038,7 +1038,7 @@ def main():
     from os import getcwd,chdir
     savepath = getcwd()
     if not glfw.glfwInit():
-        exit()
+        sys.exit(1)
     chdir(savepath)
 
 
@@ -1053,7 +1053,7 @@ def main():
 
     if not window:
         glfw.glfwTerminate()
-        exit()
+        sys.exit(1)
 
     # Make the window's context current
     glfw.glfwMakeContextCurrent(window)

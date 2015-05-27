@@ -37,12 +37,22 @@ if sys.platform.startswith('win'):
       lib_basename = 'WIN64/iio'
    else:      
       lib_basename = 'WIN32/iio'
-else:      # linux and osx
+elif sys.platform.startswith('darwin'): # precompiled osx intel 64 bits
+   lib_basename = 'MAC64/libiio'
+   lib_ext = '.so'
+else:      # linux 
    lib_basename = 'libiio'
    lib_ext = '.so'
 
 libiiofile= os.path.join(here, lib_basename+lib_ext)
 
+### fallback if precompiled libraries are not usable
+try:
+   os.stat(libiiofile)
+except OSError:
+   lib_basename = 'libiio'
+   lib_ext = '.so'
+   libiiofile= os.path.join(here, lib_basename+lib_ext)
 
 ### HACK TO BUILD libiio ON THE FLY
 try:
@@ -162,7 +172,7 @@ def read_tiled_buffers(filename):
          # generate the interlan memory to copy the tile
          data = ctypes.ARRAY(ctypes.c_float, N)()
          libiio.copy_tile(ptr, w, h, nch, data, x, y, ww, hh, out_nch)  # only allow up to 4 channels
-         tiles.append( (data, x, y, ww,hh, out_nch) ) 
+         tiles.append( [data, x, y, ww,hh, out_nch, -1] )  # -1 (the last field is a placeholder for the textureID)
          
 
    # free the memory
