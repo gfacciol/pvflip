@@ -2,6 +2,7 @@
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
+# 05/2015: organize shaders
 # 04/2015: use os.stat to detect changes file changes
 # v03 : faster image load with piio.read_buffer avoids passing trough numpy
 #       fragment shader color manipulation (optic flow)
