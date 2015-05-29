@@ -8,9 +8,12 @@ when the [dependecies are met](#dependencies).
 
 ## On Windows: 
 
-[A precompiled standalone exe is available for win32.](https://github.com/gfacciol/pvflip/tree/master/PRECOMPILED)
-Just unzip and launch the file **v.exe**.
-Otherwise, the installation on windows is [more laborious](#windows-dependencies).
+The installation on windows is [laborious](#windows-dependencies).
+
+Luckily precompiled and standalone binaries of pvflip are available for [win32](https://github.com/gfacciol/pvflip/releases/download/v0.4/pvflip_win32.zip) and [mac64](https://github.com/gfacciol/pvflip/releases/download/v0.4/pvflip_mac64.zip)
+
+Just unzip and launch the file **v.exe**, or **v**.
+
 
 
 # Installation (optional)
