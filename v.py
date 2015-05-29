@@ -133,11 +133,14 @@ rgba_shader = """
    uniform sampler2D src;
    uniform float shader_a;
    uniform float shader_b;
+   uniform int   shader_c;
 
    void main (void)
    {
       vec4 p = texture2D(src, gl_TexCoord[0].xy);
       gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
+      if (shader_c > 0)
+         gl_FragColor = clamp(1.0 - p * shader_a + shader_b, 0.0, 1.0);
       //gl_FragColor = gl_Color*shader_a; // the color of the triangle
    }
    """
@@ -201,11 +204,14 @@ void jet(float x, int& r, int& g, int& b)
   uniform sampler2D src;
   uniform float shader_a;
   uniform float shader_b;
+  uniform int   shader_c;
 
   void main (void)
   {
        vec4 q = texture2D(src, gl_TexCoord[0].xy);
        q = 1.0 - (q * shader_a + shader_b);
+       if (shader_c > 0)
+         q = 1.0 - q;
        if(q.x < 0.0) q.x = -0.05;
        if(q.x > 1.0) q.x =  1.05;
        q.x = q.x/1.15 + 0.1;
@@ -226,7 +232,7 @@ SHADERS = {
       'oflow': oflow_shader,
       'rb'   : rb_shader, 
       'dhsv' : depth_shader_hsv,
-      'djet' :depth_shader_jet
+      'djet' : depth_shader_jet
       }
 SHADER_PROGRAMS = {}
 
@@ -239,6 +245,7 @@ class ViewportState:
    zoom_param  = 1
    scale_param = 1.0      ## TODO internal variables should not be here
    bias_param  = 0
+   inv_param   = 0
 
    v_center = 0.5
    v_radius = 0.5
@@ -289,6 +296,7 @@ class ViewportState:
       if V.v_radius:
          V.scale_param = 1/(2.0*V.v_radius)
       V.bias_param  = -(V.v_center-V.v_radius)*V.scale_param
+      V.inv_param   = 0
       V.redisp=1
 
    def radius_update(V, offset):
@@ -674,7 +682,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # reset visualization
     if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
-       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 3
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 4
        V.redisp = 1
 
 
@@ -845,16 +853,30 @@ def display( window ):
           program  = SHADER_PROGRAMS['rb']
     elif D.nch == 1:
        if V.TOGGLE_FLOW_COLORS == 1:
+          V.inv_param=0
           program  = SHADER_PROGRAMS['djet']
        elif V.TOGGLE_FLOW_COLORS == 2:
+          V.inv_param=0
           program  = SHADER_PROGRAMS['dhsv']
+       elif V.TOGGLE_FLOW_COLORS == 3:
+          V.inv_param=1
+          program  = SHADER_PROGRAMS['djet']
+       elif V.TOGGLE_FLOW_COLORS == 4:
+          V.inv_param=1
+          program  = SHADER_PROGRAMS['rgba']
        else:
+          V.inv_param=0
           program  = SHADER_PROGRAMS['rgba']
     else:
-       V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 2
+       V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 3
        if V.TOGGLE_FLOW_COLORS == 1:
+          V.inv_param=0
           program  = SHADER_PROGRAMS['hsv']
+       elif V.TOGGLE_FLOW_COLORS == 2:
+          V.inv_param=1
+          program  = SHADER_PROGRAMS['rgba']
        else:
+          V.inv_param=0
           program  = SHADER_PROGRAMS['rgba']
 
     glUseProgram(program)   
@@ -863,6 +885,8 @@ def display( window ):
     glUniform1f(shader_a,V.scale_param)
     shader_b= glGetUniformLocation(program, "shader_b")
     glUniform1f(shader_b,V.bias_param)
+    shader_c= glGetUniformLocation(program, "shader_c")
+    glUniform1i(shader_c,V.inv_param)
 
     # DRAW THE IMAGE
     textureID=13
@@ -1110,6 +1134,8 @@ def main():
     glUniform1f(shader_a,V.scale_param)
     shader_b= glGetUniformLocation(program, "shader_b")
     glUniform1f(shader_b,V.bias_param)
+    shader_c= glGetUniformLocation(program, "shader_c")
+    glUniform1i(shader_c,V.inv_param)
 
 
 
