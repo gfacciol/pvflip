@@ -138,9 +138,10 @@ rgba_shader = """
    void main (void)
    {
       vec4 p = texture2D(src, gl_TexCoord[0].xy);
-      gl_FragColor = clamp(p * shader_a + shader_b, 0.0, 1.0);
+      p = p * shader_a + shader_b;
       if (shader_c > 0)
-         gl_FragColor = clamp(1.0 - p * shader_a + shader_b, 0.0, 1.0);
+         p = 1.0 - p;
+      gl_FragColor = clamp(p , 0.0, 1.0);
       //gl_FragColor = gl_Color*shader_a; // the color of the triangle
    }
    """
@@ -682,7 +683,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # reset visualization
     if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
-       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 4
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 5
        V.redisp = 1
 
 
