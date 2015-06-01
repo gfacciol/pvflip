@@ -2,6 +2,7 @@
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
+# 06/2015: add snapshot key S 
 # 05/2015: organize shaders
 # 04/2015: use os.stat to detect changes file changes
 # v03 : faster image load with piio.read_buffer avoids passing trough numpy
@@ -227,13 +228,67 @@ void jet(float x, int& r, int& g, int& b)
   }
    """
 
+depth_shader_dirt = """
+/*
+// translate value x in [0..1] into color triplet using "dirt" color map
+*/
+
+  uniform sampler2D src;
+  uniform float shader_a;
+  uniform float shader_b;
+  uniform int   shader_c;
+
+  void main (void)
+  {
+
+float Rx[7], Ry[7];
+Rx[0]=0.; Rx[1]=35.; Rx[2]=82.5; Rx[3]= 91.; Rx[4]=97.5; Rx[5]=100.; Rx[6]=100.;
+Ry[0]=1.; Ry[1]=1.;  Ry[2]=.54;  Ry[3]= .41; Ry[4]=.25;  Ry[5]=.2;   Ry[6]=.2;
+float Gx[7], Gy[7];
+Gx[0]=0.; Gx[1]=4.; Gx[2]=15.; Gx[3]=25.; Gx[4]=85. ; Gx[5]=91. ; Gx[5]=100.;
+Gy[0]=1.; Gy[1]=1.; Gy[2]=0.8; Gy[3]=0.7; Gy[4]=0.22; Gy[5]=0.15; Gy[5]=0.;
+float Bx[7], By[7];
+Bx[0]= 0.; Bx[1]= 10. ; Bx[2]= 21. ; Bx[3]=24. ; Bx[4]=100.; Bx[5]=100.; Bx[6]=100.;
+By[0]= 1.; By[1]= 0.35; By[2]= 0.4 ; By[3]=0.  ; By[4]=0.;   By[5]=0.;   By[6]=0.;
+
+
+       vec4 q = texture2D(src, gl_TexCoord[0].xy);
+       q = 1.0 - (q * shader_a + shader_b);
+       if (shader_c > 0)
+         q = 1.0 - q;
+       if(q.x < 0.0) q.x = -0.00;
+       if(q.x > 1.0) q.x =  1.00;
+       vec4 p;
+       p.w = 1.0;
+
+       for(int i=1;i<7;i++) {
+        if(i<6 && q.x >= Rx[i-1]/100.0 && q.x <= Rx[i]/100.0){
+               float cc = (Rx[i] - q.x*100.0) / (Rx[i] -  Rx[i-1]);
+               p.x = cc * Ry[i-1] + (1.0 - cc)*Ry[i];
+        }
+        if(q.y >= Gx[i-1]/100.0 && q.y <= Gx[i]/100.0){
+               float cc = (Gx[i] - q.y*100.0) / (Gx[i] -  Gx[i-1]);
+               p.y = cc * Gy[i-1] + (1.0 - cc)*Gy[i];
+        }
+        if(i<5 && q.z >= Bx[i-1]/100.0 && q.z <= Bx[i]/100.0){
+               float cc = (Bx[i] - q.z*100.0) / (Bx[i] -  Bx[i-1]);
+               p.z = cc * By[i-1] + (1.0 - cc)*By[i];
+        }
+       }
+
+       gl_FragColor = clamp(p, 0.0, 1.0);
+
+  }
+   """
+
 SHADERS = { 
       'rgba' : rgba_shader,
       'hsv'  : hsv_shader,
       'oflow': oflow_shader,
       'rb'   : rb_shader, 
       'dhsv' : depth_shader_hsv,
-      'djet' : depth_shader_jet
+      'djet' : depth_shader_jet,
+      'ddirt': depth_shader_dirt
       }
 SHADER_PROGRAMS = {}
 
@@ -656,6 +711,22 @@ def keyboard_callback(window, key, scancode, action, mods):
        print("range set to [0,255]")
 
 
+    # (SAVE) write current buffer
+    if key==glfw.GLFW_KEY_S and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT): 
+       import numpy as np
+       import piio
+       w,h=V.winx,V.winy
+       data = glReadPixels (0,0,w,h, GL_RGB,  GL_UNSIGNED_BYTE)
+       iimage = np.fromstring(data, dtype=np.uint8, count=w*h*3).reshape((h,w,3))
+       n=0     # TODO determine next snapshot
+       print('saving' + 'snap%02d.png'%n)
+       piio.write('snap%02d.png'%n, iimage[::-1,:,0:3])
+       ### from http://nullege.com/codes/show/src@g@l@glumpy-0.2.1@glumpy@figure.py/313/OpenGL.GL.glReadPixels
+       #from PIL import Image
+       #image = Image.fromstring('RGBA', (w,h), data)
+       #image = image.transpose(Image.FLIP_TOP_BOTTOM)
+       #image.save ('save.png')
+
 
     # zoom
     if key==glfw.GLFW_KEY_P and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
@@ -736,6 +807,7 @@ def keyboard_callback(window, key, scancode, action, mods):
        print("D,E   : range scale up/down")
        print("R     : reset visualization: zoom,pan,range")
        print("1     : toggle optic flow coloring")
+       print("S     : capture a snap##.png of the current view")
        print("mouse wheel: contrast center")
        print("mouse wheel+shift: contrast scale")
        print("mouse motion+shift: contrast center")
