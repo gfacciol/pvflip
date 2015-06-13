@@ -256,8 +256,9 @@ By[0]= 1.; By[1]= 0.35; By[2]= 0.4 ; By[3]=0.  ; By[4]=0.;   By[5]=0.;   By[6]=0
        q = 1.0 - (q * shader_a + shader_b);
        if (shader_c > 0)
          q = 1.0 - q;
-       if(q.x < 0.0) q.x = -0.00;
-       if(q.x > 1.0) q.x =  1.00;
+
+       q = clamp(q, 0.0, 1.0);
+
        vec4 p;
        p.w = 1.0;
 
@@ -452,6 +453,7 @@ class ImageState:
    h=0
    nch=0
    # image data
+   filename=''
    imageBitmapTiles=0
    v_max = 0
    v_min = 0
@@ -483,8 +485,11 @@ V = ViewportState()
 D = ImageState()
 DD = {}
 current_image_idx=0
+TC = {}        # TILE CACHE
 
 
+def load_image_tile(imagename):
+   pass
 
 def load_image(imagename):
    import piio
@@ -879,19 +884,15 @@ def display( window ):
 
     def drawImageDRY(textureID,w,h,x0=0,y0=0):
        glPushMatrix()
-   
        # third operation
        glScalef(V.zoom_param, V.zoom_param,1)
-
        # second operation
        glTranslate(-V.dx,-V.dy,0)
        # second operation
        glTranslate(V.dragdx,V.dragdy,0)
 
        visible=False
-
        import numpy as np
-
        M=np.array(glGetDoublev(GL_PROJECTION_MATRIX)).T.dot(np.array(glGetDoublev(GL_MODELVIEW_MATRIX)).T)
 
        tt = np.array([[x0  ,y0  ,0,1], 
@@ -903,37 +904,30 @@ def display( window ):
        if (not ((tt[0,:].max() < -1) or (1 < tt[0,:].min()))) and (not ((tt[1,:].max() < -1) or (1 < tt[1,:].min()))) :
           visible=True
 
-
        glPopMatrix()
 
        if not visible:
           return False
        return True
 
+
     def drawImagePlaceholder(w,h,x0=0,y0=0):
        glPushMatrix()
-   
        # third operation
        glScalef(V.zoom_param, V.zoom_param,1)
-
        # second operation
        glTranslate(-V.dx,-V.dy,0)
        # second operation
        glTranslate(V.dragdx,V.dragdy,0)
-
        # first operation
        glColor3f(0.5,0.0,0.0); 
        glBegin( GL_QUADS );
-       glVertex3d(x0  ,y0+h ,0);
-       glVertex3d(x0+w,y0+h ,0);
-       glVertex3d(x0+w,y0   ,0);
-       glVertex3d(x0  ,y0   ,0);
+       glVertex3d(x0  ,y0+h ,0); glVertex3d(x0+w,y0+h ,0);
+       glVertex3d(x0+w,y0   ,0); glVertex3d(x0  ,y0   ,0);
        glEnd();
-
-
        glPopMatrix()
-
        return True
+
 
     def drawImage(textureID,w,h,x0=0,y0=0):
        glPushMatrix()
@@ -945,27 +939,6 @@ def display( window ):
        glTranslate(-V.dx,-V.dy,0)
        # second operation
        glTranslate(V.dragdx,V.dragdy,0)
-
-#       import numpy as np
-#
-#       M=np.array(glGetDoublev(GL_PROJECTION_MATRIX)).T.dot(np.array(glGetDoublev(GL_MODELVIEW_MATRIX)).T)
-#
-#       tt = np.array([[x0  ,y0  ,0,1], 
-#                      [x0+w,y0  ,0,1], 
-#                      [x0  ,y0+h,0,1], 
-#                      [x0+w,y0+h,0,1]]).T
-#       tt = M.dot(tt)
-#       tt = tt / (np.ones([4,1])*(tt[3,:]))
-
-#       visible=False
-#       if (not ((tt[0,:].max() < -1) or (1 < tt[0,:].min()))) and (not ((tt[1,:].max() < -1) or (1 < tt[1,:].min()))) :
-#          visible=True
-#
-#       if not visible:
-##          print 'NON ' + str([x0  ,y0]) 
-#          glPopMatrix()
-#          return False
-##       print 'vis ' + str([x0  ,y0]) 
 
        glEnable (GL_TEXTURE_2D); #/* enable texture mapping */
        glBindTexture (GL_TEXTURE_2D, textureID); #/* bind to our texture, has id of 13 */
@@ -1061,31 +1034,53 @@ def display( window ):
 
     # DRAW THE IMAGE
     textureID=13
+    tilenr=0
     for tile in D.imageBitmapTiles:
        if drawImageDRY(textureID,tile[3],tile[4],tile[1],tile[2]):
-          if tile[6] == -1:
-             global q
-             tile[6] = -2
-             q.put((tile,textureID))
-#             setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
-#             tile[6] = textureID
-       else: ### TODO: BETTER AND FASTER OVERWRTITE THE EXISTING TEXTURES
-          if tile[6] >= 0:
-             glDeleteTextures(textureID)
-             tile[6] = -1
+          global TC
+          if (current_image_idx,tilenr) not in TC:
+             global qq
+             qq.put((current_image_idx,tilenr))
 
-       if tile[6] >= 0:
-           ok = drawImage(textureID,tile[3],tile[4],tile[1],tile[2]) 
-       else: 
-           glUseProgram(0)   
-           drawImagePlaceholder(tile[3],tile[4],tile[1],tile[2]) 
-           glUseProgram(program)   
-       #if ok == False:
-       ### BETTER OVERWRTITE THE EXISTING TEXTURES
-       #   glDeleteTextures(textureID)
-       #   tile[6] = -1
+             glUseProgram(0)   
+             drawImagePlaceholder(tile[3],tile[4],tile[1],tile[2]) 
+             glUseProgram(program)   
 
-       textureID=textureID+1
+          else:
+             texID = TC[(current_image_idx,tilenr)]
+             ok = drawImage(texID,tile[3],tile[4],tile[1],tile[2]) 
+       else:
+          if (current_image_idx,tilenr) in TC:
+             t = TC.pop((current_image_idx,tilenr))
+             print "pop %d"%t
+
+       tilenr = tilenr + 1
+
+          
+
+#          if tile[6] == -1:
+#             global q
+#             tile[6] = -2
+#             q.put((tile,textureID))
+##             setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
+##             tile[6] = textureID
+#       else: ### TODO: BETTER AND FASTER OVERWRTITE THE EXISTING TEXTURES
+#          if tile[6] >= 0:
+#             glDeleteTextures(textureID)
+#             tile[6] = -1
+#
+#       if tile[6] >= 0:
+#           ok = drawImage(textureID,tile[3],tile[4],tile[1],tile[2]) 
+#       else: 
+#           glUseProgram(0)   
+#           drawImagePlaceholder(tile[3],tile[4],tile[1],tile[2]) 
+#           glUseProgram(program)   
+#       #if ok == False:
+#       ### BETTER OVERWRTITE THE EXISTING TEXTURES
+#       #   glDeleteTextures(textureID)
+#       #   tile[6] = -1
+#
+#       textureID=textureID+1
 
 
     # DONT USE THE SHADER FOR RENDERING THE HUD
@@ -1386,6 +1381,39 @@ def main():
 
 
 
+
+    global qq 
+    qq = Queue.Queue()
+    global TC
+    global TEXID
+    TEXID = 1
+
+    def get_new_texID():
+       global TEXID
+       global TC
+       while TEXID in TC.values():
+          TEXID = (TEXID+1)%50
+       return TEXID
+
+
+    def load_textures_qq(qq):
+      ret = 0
+      try:
+         while 1:
+            (fid, tilenr) = qq.get_nowait()
+            texID = get_new_texID() 
+            global DD
+            tile = DD[fid].imageBitmapTiles[tilenr]
+            setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
+            TC[(fid,tilenr)] = texID
+            print texID
+            ret = 1
+            return ret
+      except Queue.Empty:
+         return ret
+
+
+
     # Loop until the user closes the window
     while not glfw.glfwWindowShouldClose(window):
 
@@ -1413,7 +1441,8 @@ def main():
            V.mute_keyboard=0
 
 
-        V.redisp = load_images_a(q)
+        #V.redisp = load_images_a(q)
+        V.redisp = load_textures_qq(qq)
 
         # process pending events before checking for redisp
         glfw.glfwPollEvents()

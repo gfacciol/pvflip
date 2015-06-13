@@ -256,8 +256,9 @@ By[0]= 1.; By[1]= 0.35; By[2]= 0.4 ; By[3]=0.  ; By[4]=0.;   By[5]=0.;   By[6]=0
        q = 1.0 - (q * shader_a + shader_b);
        if (shader_c > 0)
          q = 1.0 - q;
-       if(q.x < 0.0) q.x = -0.00;
-       if(q.x > 1.0) q.x =  1.00;
+
+       q = clamp(q, 0.0, 1.0);
+
        vec4 p;
        p.w = 1.0;
 
