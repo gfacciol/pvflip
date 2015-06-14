@@ -44,7 +44,7 @@ For the intallations remember to set:
     xorg-dev libglu1-mesa-dev
     python-opengl cmake 
     A working C compiler
-    libtiff libjpeg libpng for piio
+    libtiff-dev libjpeg-dev libpng-dev for piio
 
 
 ### Windows dependencies
