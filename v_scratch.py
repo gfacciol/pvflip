@@ -538,7 +538,7 @@ def change_image(new_idx):
 
       D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
       V.data_min, V.data_max =  D.v_min,D.v_max 
-      setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
+      #setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       toc('loadImage+data->RGBbitmap+texture setup')
 
       # tidy up memory 
@@ -558,7 +558,7 @@ def change_image(new_idx):
 
       # setup texture 
       #tic()
-      setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
+      #setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       V.data_min, V.data_max=  D.v_min,D.v_max 
       #toc('texture setup')
 
@@ -1132,11 +1132,11 @@ def setupTexture(imageBitmap, ix,iy,nch, textureID=13):
 
 
 
-def setupTexturesFromImageTiles(imageBitmapTiles, ix,iy,nch, textureID=13):
-    """texture environment setup"""
-    for tile in imageBitmapTiles:
-       #setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
-       textureID=textureID+1
+#def setupTexturesFromImageTiles(imageBitmapTiles, ix,iy,nch, textureID=13):
+#    """texture environment setup"""
+#    for tile in imageBitmapTiles:
+#       #setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
+#       textureID=textureID+1
 
 
 
@@ -1257,7 +1257,7 @@ def main():
 
     # setup texture 
     tic()
-    setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
+    #setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
     glFinish()  # Flush and wait
     toc('texture setup')
 
@@ -1362,20 +1362,23 @@ def main():
 
     def load_textures_qq(qq):
       ret = 0
-      while len(qq):
-         #print len(qq)
-         (fid, tilenr) = qq.popitem(last=False)[0]
-         if TC.get('_'.join(map(str,(fid, tilenr)))) != -1:
-            return 1
-         #print "loading " + '_'.join(map(str,(fid, tilenr)))
-         texID = TC.set('_'.join(map(str,(fid, tilenr))))
-         print "texid " + str(texID)
-         global DD
-         tile = DD[fid].imageBitmapTiles[tilenr]
-         setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
-         ret = 1
+      try:
+         while len(qq):
+            #print len(qq)
+            (fid, tilenr) = qq.popitem(last=False)[0]
+            if TC.get('_'.join(map(str,(fid, tilenr)))) != -1:
+               return 1
+            #print "loading " + '_'.join(map(str,(fid, tilenr)))
+            texID = TC.set('_'.join(map(str,(fid, tilenr))))
+            print "texid " + str(texID)
+            print (fid, tilenr)
+            global DD
+            tile = DD[fid].imageBitmapTiles[tilenr]
+            setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
+            ret = 1
+            return ret
+      except KeyError:
          return ret
-
 
 
     # Loop until the user closes the window
