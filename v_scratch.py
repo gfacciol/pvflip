@@ -485,7 +485,9 @@ V = ViewportState()
 D = ImageState()
 DD = {}
 current_image_idx=0
-TC = {}        # TILE CACHE
+
+from TextureCache import LRUCache, collections
+TC = LRUCache(64)        # TILE CACHE
 
 
 def load_image_tile(imagename):
@@ -1038,49 +1040,20 @@ def display( window ):
     for tile in D.imageBitmapTiles:
        if drawImageDRY(textureID,tile[3],tile[4],tile[1],tile[2]):
           global TC
-          if (current_image_idx,tilenr) not in TC:
+          texID = TC.get('_'.join(map(str,(current_image_idx,tilenr))))
+          if texID == -1:
              global qq
-             qq.put((current_image_idx,tilenr))
+             if (current_image_idx,tilenr) not in qq:
+                qq[(current_image_idx,tilenr)] = 1
 
              glUseProgram(0)   
              drawImagePlaceholder(tile[3],tile[4],tile[1],tile[2]) 
              glUseProgram(program)   
 
           else:
-             texID = TC[(current_image_idx,tilenr)]
              ok = drawImage(texID,tile[3],tile[4],tile[1],tile[2]) 
-       else:
-          if (current_image_idx,tilenr) in TC:
-             t = TC.pop((current_image_idx,tilenr))
-             print "pop %d"%t
 
        tilenr = tilenr + 1
-
-          
-
-#          if tile[6] == -1:
-#             global q
-#             tile[6] = -2
-#             q.put((tile,textureID))
-##             setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
-##             tile[6] = textureID
-#       else: ### TODO: BETTER AND FASTER OVERWRTITE THE EXISTING TEXTURES
-#          if tile[6] >= 0:
-#             glDeleteTextures(textureID)
-#             tile[6] = -1
-#
-#       if tile[6] >= 0:
-#           ok = drawImage(textureID,tile[3],tile[4],tile[1],tile[2]) 
-#       else: 
-#           glUseProgram(0)   
-#           drawImagePlaceholder(tile[3],tile[4],tile[1],tile[2]) 
-#           glUseProgram(program)   
-#       #if ok == False:
-#       ### BETTER OVERWRTITE THE EXISTING TEXTURES
-#       #   glDeleteTextures(textureID)
-#       #   tile[6] = -1
-#
-#       textureID=textureID+1
 
 
     # DONT USE THE SHADER FOR RENDERING THE HUD
@@ -1383,33 +1356,24 @@ def main():
 
 
     global qq 
-    qq = Queue.Queue()
+    qq = collections.OrderedDict()
     global TC
-    global TEXID
-    TEXID = 1
-
-    def get_new_texID():
-       global TEXID
-       global TC
-       while TEXID in TC.values():
-          TEXID = (TEXID+1)%50
-       return TEXID
 
 
     def load_textures_qq(qq):
       ret = 0
-      try:
-         while 1:
-            (fid, tilenr) = qq.get_nowait()
-            texID = get_new_texID() 
-            global DD
-            tile = DD[fid].imageBitmapTiles[tilenr]
-            setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
-            TC[(fid,tilenr)] = texID
-            print texID
-            ret = 1
-            return ret
-      except Queue.Empty:
+      while len(qq):
+         #print len(qq)
+         (fid, tilenr) = qq.popitem(last=False)[0]
+         if TC.get('_'.join(map(str,(fid, tilenr)))) != -1:
+            return 1
+         #print "loading " + '_'.join(map(str,(fid, tilenr)))
+         texID = TC.set('_'.join(map(str,(fid, tilenr))))
+         print "texid " + str(texID)
+         global DD
+         tile = DD[fid].imageBitmapTiles[tilenr]
+         setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
+         ret = 1
          return ret
 
 
