@@ -431,7 +431,8 @@ class ViewportState:
       global D
 
       ## check if falls out of the image
-      if D.w+ndx > 0 and ndx < D.w and D.h+ndy > 0 and ndy < D.h:
+      if (dy==0 or ( ndy+0+V.winy > 0 and D.h - ndy > 0)) \
+         and (dx==0 or ( ndx+0+V.winx > 0 and D.w - ndx > 0)) :
          V.dx,V.dy=ndx,ndy
          V.redisp=1
 
