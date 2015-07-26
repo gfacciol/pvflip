@@ -58,7 +58,7 @@ class build_iio(distutils.cmd.Command):
 
          # sources for IIO
         source_folders = ['./']
-        sources = ['iio.c','freemem.c']
+        sources = ['iio.c','freemem.c','fancy_image.c']
 
        ### removed the sources are just a couple of files
         #sources = []

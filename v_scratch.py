@@ -487,23 +487,57 @@ D = ImageState()
 DD = {}
 current_image_idx=0
 
+## TC is the tile cache (a LRU cache)
+global TC
 from TextureCache import LRUCache, collections
-TC = LRUCache(64)        # TILE CACHE
+TC = LRUCache(64*4)        # TILE CACHE CAPACITY (64*4) 512x512 tiles
 
 
-def load_image_tile(imagename):
-   pass
+## qq is the queue of requested tile
+global qq 
+qq = collections.OrderedDict()
+
+
+## load textures 
+def load_textures_qq(qq):
+  ret = 0
+  try:
+     while len(qq):
+        #print len(qq)
+        (fid, tilenr) = qq.popitem(last=False)[0]
+        if TC.get('_'.join(map(str,(fid, tilenr)))) != -1:
+           return 1
+        #print "loading " + '_'.join(map(str,(fid, tilenr)))
+        texID = TC.set('_'.join(map(str,(fid, tilenr))))
+        print "texid " + str(texID)
+        print (fid, tilenr)
+        global DD
+        tile = DD[fid].imageBitmapTiles[tilenr]
+        fancyimage = DD[fid].fancydata
+        fancyimage.get_tile(tile)
+        setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
+        ret = 1
+        return ret
+  except KeyError:
+     print "qq: key error"
+     return ret
+
 
 def load_image(imagename):
    import piio
    try:
 #      im,w,h,nch = piio.read_buffer(imagename)
-      tiles,w,h,nch,vmin,vmax = piio.read_tiled_buffers(imagename)
+      #tiles,w,h,nch,vmin,vmax = piio.read_tiled_buffers(imagename)
+
+      fancydata = piio.Fimage(imagename)
+      tiles,w,h,nch,vmin,vmax = fancydata.TILES
+#      print fancydata.size()
+
 #      (im,x0,y0,w,h,nch) = tiles[0]
 #      v_min,v_max=0.0,255.0
 #      v_min,v_max = piio.minmax(im)
 #      print max(map(lambda x: float('nan') if math.isinf(x) else  x , im))
-      return tiles,w,h,nch,vmin,vmax
+      return tiles,w,h,nch,vmin,vmax,fancydata
    except SystemError:
       print('error reading the image')
 
@@ -537,7 +571,7 @@ def change_image(new_idx):
             DD.pop(new_idx)
             return change_image(new_idx+1)   # skip the image
 
-      D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
+      D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max,D.fancydata = load_image(new_filename)
       V.data_min, V.data_max =  D.v_min,D.v_max 
       #setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
       toc('loadImage+data->RGBbitmap+texture setup')
@@ -1039,20 +1073,27 @@ def display( window ):
     textureID=13
     tilenr=0
     for tile in D.imageBitmapTiles:
+       global qq
+       global TC
        if drawImageDRY(textureID,tile[3],tile[4],tile[1],tile[2]):
-          global TC
+          # check the tile cache
           texID = TC.get('_'.join(map(str,(current_image_idx,tilenr))))
+          # if it's not there then add it to the queue
           if texID == -1:
-             global qq
+             # check if it's not already in the queue before adding 
              if (current_image_idx,tilenr) not in qq:
                 qq[(current_image_idx,tilenr)] = 1
 
              glUseProgram(0)   
              drawImagePlaceholder(tile[3],tile[4],tile[1],tile[2]) 
              glUseProgram(program)   
-
           else:
              ok = drawImage(texID,tile[3],tile[4],tile[1],tile[2]) 
+       else:
+          # keep the queue tidy
+          if (current_image_idx,tilenr) in qq:
+             print "popping " + str((current_image_idx,tilenr))
+             qq.popitem((current_image_idx,tilenr)) 
 
        tilenr = tilenr + 1
 
@@ -1202,7 +1243,7 @@ def main():
     # read the image
     # Usually this is done with change_image, but this is a special case
     # as we must find out the image size before creating the window 
-    D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
+    D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max,D.fancydata = load_image(I1)
     D.filename = I1
     from os import stat, path
     if I1 != '-' and path.exists(I1):
@@ -1235,7 +1276,8 @@ def main():
 
 
     # Create a windowed mode window and its OpenGL context
-    window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
+    #window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
+    window = glfw.glfwCreateWindow(500, 500, "Vflip! (reloaded)", None, None)
 
 
     if not window:
@@ -1308,78 +1350,37 @@ def main():
 ##    glFlush()
 
     
-#    from multiprocessing import Process, Queue
-#    p = Process(target=load_images_async, args=(q,))
-#    p.start()
-    ### TODO :better use threading:
-    # http://pymotw.com/2/threading/
-    ## CAN'T use THREADS to load textures into gpu memory
-### TODO!!    https://www.opengl.org/discussion_boards/showthread.php/139100-Texture-loading-in-separate-thread
-    import threading
-    import Queue
-
-
-    global q 
-    q = Queue.Queue()
-
-    def load_images_async(q):
-       while 1:
-         (tile,textureID) = q.get()
-         print textureID
-         print tile
-         setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
-         tile[6] = textureID
-
-    threads = []
-
-    if 0:
-      t = threading.Thread(target=load_images_async, args=(q,))
-      threads.append(t)
-      t.start()
-
-
-    def load_images_a(q):
-      ret = 0
-      try:
-         while 1:
-            (tile,textureID) = q.get_nowait()
-            print textureID
-           # print tile
-            setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
-            tile[6] = textureID
-            ret=1
-            return ret
-      except Queue.Empty:
-         return ret
+##    from multiprocessing import Process, Queue
+##    p = Process(target=load_images_async, args=(q,))
+##    p.start()
+#    ### TODO :better use threading:
+#    # http://pymotw.com/2/threading/
+#    ## CAN'T use THREADS to load textures into gpu memory
+#### TODO!!    https://www.opengl.org/discussion_boards/showthread.php/139100-Texture-loading-in-separate-thread
+#    import threading
+#    import Queue
+#
+#
+#    global q 
+#    q = Queue.Queue()
+#
+#    def load_images_async(q):
+#       while 1:
+#         (tile,textureID) = q.get()
+#         print textureID
+#         print tile
+#         setupTexture(tile[0], tile[3],tile[4],tile[5], textureID)
+#         tile[6] = textureID
+#
+#    threads = []
+#
+#    if 0:
+#      t = threading.Thread(target=load_images_async, args=(q,))
+#      threads.append(t)
+#      t.start()
 
 
 
-
-
-    global qq 
-    qq = collections.OrderedDict()
-    global TC
-
-
-    def load_textures_qq(qq):
-      ret = 0
-      try:
-         while len(qq):
-            #print len(qq)
-            (fid, tilenr) = qq.popitem(last=False)[0]
-            if TC.get('_'.join(map(str,(fid, tilenr)))) != -1:
-               return 1
-            #print "loading " + '_'.join(map(str,(fid, tilenr)))
-            texID = TC.set('_'.join(map(str,(fid, tilenr))))
-            print "texid " + str(texID)
-            print (fid, tilenr)
-            global DD
-            tile = DD[fid].imageBitmapTiles[tilenr]
-            setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
-            ret = 1
-            return ret
-      except KeyError:
-         return ret
 
 
     # Loop until the user closes the window
@@ -1391,7 +1392,8 @@ def main():
            # Try to resize the window if needed
            # this process the window resize requests generated by the application
            # the user window resize requests requests go directly to resize_callback
-           if V.resize and not (D.w,D.h) == glfw.glfwGetFramebufferSize(window) and not V.window_has_been_resized_by_the_user:
+           if V.resize and not (D.w,D.h) == glfw.glfwGetFramebufferSize(window) \
+                       and not V.window_has_been_resized_by_the_user:
               glfw.glfwSetWindowSize(window,D.w,D.h)
               # I know it's not been the user so I reset the variable to 0
               V.window_has_been_resized_by_the_user=0
@@ -1409,7 +1411,6 @@ def main():
            V.mute_keyboard=0
 
 
-        #V.redisp = load_images_a(q)
         V.redisp = load_textures_qq(qq)
 
         # process pending events before checking for redisp

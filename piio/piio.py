@@ -181,6 +181,83 @@ def read_tiled_buffers(filename):
    return (tiles,w,h,out_nch,vmin,vmax)
 
 
+################### FANCY
+from ctypes import c_int, c_float, c_void_p, POINTER, cast, byref, c_char, memmove, create_string_buffer, sizeof, c_char_p, Structure
+class Fimage(Structure):
+   _fields_ = [("w",  c_int),
+               ("h",  c_int),
+               ("pd", c_int),
+               ("no", c_int),
+               ("pad", c_char*200000)]
+
+
+open_fimage = libiio.fancy_image_open
+open_fimage.argtypes = [c_char_p, c_char_p]
+open_fimage.restype = Fimage
+
+get_tile_fimage = libiio.fancy_get_tile
+get_tile_fimage.argtypes = [POINTER(Fimage), c_int, c_int, c_int, c_int, c_int, POINTER(c_float)]
+
+close_fimage = libiio.fancy_image_close
+close_fimage.argtypes = [POINTER(Fimage)]
+
+class Fimage(object):
+
+   def __init__(self, filename):
+      print "INIT %s"%filename
+      self._fancy = open_fimage(str(filename), str("rw"))
+      self.w   = self._fancy.w
+      self.h   = self._fancy.h
+      self.pd  = self._fancy.pd
+      print "INIT %d %d %d"%(self.w,self.h,self.pd)
+
+      nch=self.pd
+      TSZ = 512
+      _tiles  = []*(int(self.h/TSZ+1)*int(self.w/TSZ+1)); 
+#      _tiles = []
+      self.out_nch = min(nch,4)
+      if(nch != self.out_nch):
+         print "fancy_piio_read: the input image have %d channels, only the first 4 are loaded\n"%nch
+      # generate several buffers, one for each tile
+      for y in range(0,self.h, TSZ):
+         for x in range(0,self.w, TSZ):
+            ww = min (self.w - x, TSZ)
+            hh = min (self.h - y, TSZ)
+            N=ww*hh*self.out_nch
+            # generate the interlan memory to copy the tile
+            #data = ctypes.ARRAY(ctypes.c_float, N)()
+            #libiio.copy_tile(ptr, w, h, nch, data, x, y, ww, hh, out_nch)  # only allow up to 4 channels
+            data = 0
+            _tiles.append( [data, x, y, ww,hh, self.out_nch, -1] )  # -1 (the last field is a placeholder for the textureID)
+      self.vmin=0
+      self.vmax=255
+
+      self.TILES = (_tiles,self.w,self.h,self.out_nch,self.vmin,self.vmax)
+
+
+   def get_tile(self, tile): 
+      N = tile[3]*tile[4]*tile[5]
+      tile[0]= ctypes.ARRAY(ctypes.c_float, N)()
+      get_tile_fimage(byref(self._fancy), tile[1], tile[2], tile[3], tile[4],tile[5],tile[0])
+      return
+
+
+
+
+
+   def size(self):
+      return self.TILES
+
+   def __del___(self):
+      close_fimage(self._fancy)
+
+
+
+
+
+################### END FANCY
+
+
 def minmax(data):
    '''
    IIO: write(filename,numpyarray)

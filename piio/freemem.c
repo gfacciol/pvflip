@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <fancy_image.h>
 
 void freemem(void *ptr){
    free(ptr);
@@ -35,3 +36,19 @@ void copy_tile(float *src, int nc, int nr, int nch, float *dst, int x0, int y0, 
    }
    }
 }
+
+#define __min(a,b)  (((a) < (b)) ? (a) : (b))
+void fancy_get_tile(struct fancy_image *f, const int x, const int y, const int w, const int h, const int pd, float* dst){
+   int fw=f->w;
+   int fh=f->h;
+   int fpd=f->pd;
+
+   for (int j = 0; j < __min(h, fh-y); j++)
+      for (int i = 0; i < __min(w, fw-x); i++)
+         for (int l = 0; l < fpd; l++)
+         {
+            float v = fancy_image_getsample(f, x+i, y+j, l);
+            dst[fpd*(i + j*w)  +l] = v;
+         }
+}
+
