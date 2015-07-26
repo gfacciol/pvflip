@@ -480,17 +480,18 @@ class ImageState:
 class DataBackend:
    ### TODO :  load image, change image
    pass
-   
 
 V = ViewportState()
 D = ImageState()
 DD = {}
 current_image_idx=0
 
+
 ## TC is the tile cache (a LRU cache)
 global TC
 from TextureCache import LRUCache, collections
 TC = LRUCache(64*4)        # TILE CACHE CAPACITY (64*4) 512x512 tiles
+MEMC=[None]*(64*4+1)
 
 
 ## qq is the queue of requested tile
@@ -516,6 +517,8 @@ def load_textures_qq(qq):
         fancyimage = DD[fid].fancydata
         fancyimage.get_tile(tile)
         setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
+        MEMC[texID] = tile[0];
+        #tile[0]=None ###        TODO USE THE SAME CACHING FOR TILE DATA
         ret = 1
         return ret
   except KeyError:
@@ -1276,8 +1279,7 @@ def main():
 
 
     # Create a windowed mode window and its OpenGL context
-    #window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
-    window = glfw.glfwCreateWindow(500, 500, "Vflip! (reloaded)", None, None)
+    window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
 
 
     if not window:

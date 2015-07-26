@@ -204,12 +204,11 @@ close_fimage.argtypes = [POINTER(Fimage)]
 class Fimage(object):
 
    def __init__(self, filename):
-      print "INIT %s"%filename
       self._fancy = open_fimage(str(filename), str("rw"))
       self.w   = self._fancy.w
       self.h   = self._fancy.h
       self.pd  = self._fancy.pd
-      print "INIT %d %d %d"%(self.w,self.h,self.pd)
+      print "INIT %s (%d %d %d)"%(filename,self.w,self.h,self.pd)
 
       nch=self.pd
       TSZ = 512
@@ -223,8 +222,8 @@ class Fimage(object):
          for x in range(0,self.w, TSZ):
             ww = min (self.w - x, TSZ)
             hh = min (self.h - y, TSZ)
-            N=ww*hh*self.out_nch
-            # generate the interlan memory to copy the tile
+            # generate the internal memory to copy the tile
+            #N=ww*hh*self.out_nch
             #data = ctypes.ARRAY(ctypes.c_float, N)()
             #libiio.copy_tile(ptr, w, h, nch, data, x, y, ww, hh, out_nch)  # only allow up to 4 channels
             data = 0
@@ -240,10 +239,6 @@ class Fimage(object):
       tile[0]= ctypes.ARRAY(ctypes.c_float, N)()
       get_tile_fimage(byref(self._fancy), tile[1], tile[2], tile[3], tile[4],tile[5],tile[0])
       return
-
-
-
-
 
    def size(self):
       return self.TILES
