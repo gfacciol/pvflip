@@ -1,2 +1,2 @@
-from .piio import read, write, read_buffer, minmax, read_tiled_buffers, Fimage
+from .piio import read, write, read_buffer, minmax, read_tiled_buffers, Fimage, Fancyimage
 

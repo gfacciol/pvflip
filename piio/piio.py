@@ -201,17 +201,18 @@ get_tile_fimage.argtypes = [POINTER(Fimage), c_int, c_int, c_int, c_int, c_int, 
 close_fimage = libiio.fancy_image_close
 close_fimage.argtypes = [POINTER(Fimage)]
 
-class Fimage(object):
+class Fancyimage(object):
 
    def __init__(self, filename):
       self._fancy = open_fimage(str(filename), str("rw"))
+      self.filename = filename
       self.w   = self._fancy.w
       self.h   = self._fancy.h
       self.pd  = self._fancy.pd
       print "INIT %s (%d %d %d)"%(filename,self.w,self.h,self.pd)
 
       nch=self.pd
-      TSZ = 512
+      TSZ = 1024
       _tiles  = []*(int(self.h/TSZ+1)*int(self.w/TSZ+1)); 
 #      _tiles = []
       self.out_nch = min(nch,4)
@@ -243,7 +244,8 @@ class Fimage(object):
    def size(self):
       return self.TILES
 
-   def __del___(self):
+   def __del__(self):
+      print "DESTROY " + self.filename
       close_fimage(self._fancy)
 
 

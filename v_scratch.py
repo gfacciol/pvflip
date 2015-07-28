@@ -490,11 +490,11 @@ current_image_idx=0
 ## TC is the tile cache (a LRU cache)
 global TC
 from TextureCache import LRUCache, collections
-TC = LRUCache(64*4)        # TILE CACHE CAPACITY (64*4) 512x512 tiles
-MEMC=[None]*(64*4+1)
+TC = LRUCache(64)        # TILE CACHE CAPACITY (64*4) 512x512 tiles
+MEMC=[None]*(64+1)
 
 
-## qq is the queue of requested tile
+## qq is the queue of requested tiles
 global qq 
 qq = collections.OrderedDict()
 
@@ -517,8 +517,8 @@ def load_textures_qq(qq):
         fancyimage = DD[fid].fancydata
         fancyimage.get_tile(tile)
         setupTexture(tile[0], tile[3],tile[4],tile[5], texID)
-        MEMC[texID] = tile[0];
-        #tile[0]=None ###        TODO USE THE SAME CACHING FOR TILE DATA
+        #MEMC[texID] = tile[0];
+        tile[0]=None ###        TODO USE THE SAME CACHING FOR TILE DATA
         ret = 1
         return ret
   except KeyError:
@@ -532,7 +532,7 @@ def load_image(imagename):
 #      im,w,h,nch = piio.read_buffer(imagename)
       #tiles,w,h,nch,vmin,vmax = piio.read_tiled_buffers(imagename)
 
-      fancydata = piio.Fimage(imagename)
+      fancydata = piio.Fancyimage(imagename)
       tiles,w,h,nch,vmin,vmax = fancydata.TILES
 #      print fancydata.size()
 
@@ -549,7 +549,7 @@ def change_image(new_idx):
    '''updates D and DD: acts as a cache of the images'''
    global D,DD
 
-   BUFF=10  # BUFFERED IMAGES
+   BUFF=5  # BUFFERED IMAGES
    NUM_FILES = (len(sys.argv)-1)
    new_idx = new_idx % NUM_FILES
    new_filename = sys.argv[new_idx+1]
@@ -1075,9 +1075,10 @@ def display( window ):
     # DRAW THE IMAGE
     textureID=13
     tilenr=0
+    global qq
+    global TC
+    print len(D.imageBitmapTiles)
     for tile in D.imageBitmapTiles:
-       global qq
-       global TC
        if drawImageDRY(textureID,tile[3],tile[4],tile[1],tile[2]):
           # check the tile cache
           texID = TC.get('_'.join(map(str,(current_image_idx,tilenr))))
@@ -1279,7 +1280,8 @@ def main():
 
 
     # Create a windowed mode window and its OpenGL context
-    window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
+    #window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
+    window = glfw.glfwCreateWindow(1000, 1000, "Vflip! (reloaded)", None, None)
 
 
     if not window:
