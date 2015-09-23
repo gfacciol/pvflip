@@ -490,7 +490,7 @@ current_image_idx=0
 ## TC is the tile cache (a LRU cache)
 global TC
 from TextureCache import LRUCache, collections
-TC = LRUCache(64)        # TILE CACHE CAPACITY (64*4) 512x512 tiles
+TC = LRUCache(18)        # TILE CACHE CAPACITY (64*4) 512x512 tiles
 MEMC=[None]*(64+1)
 
 

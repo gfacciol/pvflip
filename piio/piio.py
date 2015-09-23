@@ -204,7 +204,7 @@ close_fimage.argtypes = [POINTER(Fimage)]
 class Fancyimage(object):
 
    def __init__(self, filename):
-      self._fancy = open_fimage(str(filename), str("rw"))
+      self._fancy = open_fimage(str(filename), str("r"))
       self.filename = filename
       self.w   = self._fancy.w
       self.h   = self._fancy.h
