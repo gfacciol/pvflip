@@ -730,11 +730,14 @@ def keyboard_callback(window, key, scancode, action, mods):
     if key==glfw.GLFW_KEY_S and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT): 
        import numpy as np
        import piio
+       from os import path
        w,h=V.winx,V.winy
        data = glReadPixels (0,0,w,h, GL_RGB,  GL_UNSIGNED_BYTE)
        iimage = np.fromstring(data, dtype=np.uint8, count=w*h*3).reshape((h,w,3))
-       n=0     # TODO determine next snapshot
-       print('saving' + 'snap%02d.png'%n)
+       n=0       # determine next snapshot
+       while path.exists('snap%02d.png'%n):
+          n = n+1
+       print('Saving ' + 'snap%02d.png'%n)
        piio.write('snap%02d.png'%n, iimage[::-1,:,0:3])
        ### from http://nullege.com/codes/show/src@g@l@glumpy-0.2.1@glumpy@figure.py/313/OpenGL.GL.glReadPixels
        #from PIL import Image
