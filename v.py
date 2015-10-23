@@ -311,8 +311,13 @@ class ViewportState:
    dragdx,dragdy=0,0
    dragx0,dragy0=0,0
 
-   # mouse state variables : NOT USED YET TODO 
-   x0=0; y0=0; w0=0; h0=0; b0state=''; b1state=''
+   # Window
+   window = None
+
+   # mouse state variables
+   mx = 0
+   my = 0
+   x0=0; y0=0; w0=0; h0=0; b0state=''; b1state='' # NOT USED YET
 
    # keyboard
    shift_is_pressed=0
@@ -548,6 +553,10 @@ def change_image(new_idx):
 
    print (new_idx,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
 
+   # Call the mouseMotion callback in order to update the display info
+   if V.window is not None:
+       mouseMotion_callback(V.window, V.mx, V.my)
+
    return new_idx
 
 
@@ -592,6 +601,11 @@ def mouseMotion_callback(window, x,y):
        else:
           V.txt_val = '%s %s %s'%(centerval[0], centerval[1], centerval[2])
        glfw.glfwSetWindowTitle(window, '%s:[%s]'%(V.txt_pos,V.txt_val))
+
+    # Update viewport mouse position
+    V.mx, V.my = x, y
+    V.window = window
+
     V.redisp = 1
 
 
@@ -716,11 +730,14 @@ def keyboard_callback(window, key, scancode, action, mods):
     if key==glfw.GLFW_KEY_S and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT): 
        import numpy as np
        import piio
+       from os import path
        w,h=V.winx,V.winy
        data = glReadPixels (0,0,w,h, GL_RGB,  GL_UNSIGNED_BYTE)
        iimage = np.fromstring(data, dtype=np.uint8, count=w*h*3).reshape((h,w,3))
-       n=0     # TODO determine next snapshot
-       print('saving' + 'snap%02d.png'%n)
+       n=0       # determine next snapshot
+       while path.exists('snap%02d.png'%n):
+          n = n+1
+       print('Saving ' + 'snap%02d.png'%n)
        piio.write('snap%02d.png'%n, iimage[::-1,:,0:3])
        ### from http://nullege.com/codes/show/src@g@l@glumpy-0.2.1@glumpy@figure.py/313/OpenGL.GL.glReadPixels
        #from PIL import Image

@@ -34,7 +34,7 @@ For the intallations remember to set:
 # Dependencies
 
 ### OSX dependencies (known)
-    PyGL (pip install PyGL)
+    PyGL or PyOpenGL (pip install PyGL)
     A working C compiler (XCode)
     libtiff libjpeg libpng for piio
 
