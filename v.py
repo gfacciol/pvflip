@@ -511,10 +511,10 @@ def change_image(new_idx):
    new_filename = sys.argv[new_idx+1]
 
    from os import stat 
-   if new_idx in DD:
-      if new_filename != '-' and DD[new_idx].mtime < stat(new_filename).st_mtime:
-         print new_filename + ' has changed. Reloading...'
-         DD.pop(new_idx)
+   #if new_idx in DD:
+   #   if new_filename != '-' and DD[new_idx].mtime < stat(new_filename).st_mtime:
+   #      print new_filename + ' has changed. Reloading...'
+   #      DD.pop(new_idx)
 
    if new_idx not in DD:
       D = DD[new_idx] = ImageState()
