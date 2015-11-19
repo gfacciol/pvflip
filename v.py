@@ -732,6 +732,7 @@ def keyboard_callback(window, key, scancode, action, mods):
        import piio
        from os import path
        w,h=V.winx,V.winy
+       glReadBuffer( GL_FRONT );
        data = glReadPixels (0,0,w,h, GL_RGB,  GL_UNSIGNED_BYTE)
        iimage = np.fromstring(data, dtype=np.uint8, count=w*h*3).reshape((h,w,3))
        n=0       # determine next snapshot
