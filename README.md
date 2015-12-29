@@ -1,4 +1,4 @@
-# Running the program, no need for system-wise installation:
+# Running the program. No need for system-wise installation:
 
     > v.py image_file
 
@@ -13,22 +13,6 @@ The installation on windows is [laborious](#windows-dependencies).
 Luckily precompiled and standalone binaries of pvflip are available for [win32](https://github.com/gfacciol/pvflip/releases/download/v0.4/pvflip_win32.zip) and [mac64](https://github.com/gfacciol/pvflip/releases/download/v0.4/pvflip_mac64.zip)
 
 Just unzip and launch the file **v.exe**, or **v**.
-
-
-
-# Installation (optional)
-
-    > python setup.py install 
-
-this compiles and installs the following python modules: pyglfw3, piio
-
-### Local Installation 
-
-    > python setup.py install  --prefix=$HOME/local
-
-For the intallations remember to set:
-
-    export PYTHONPATH=$PYTHONPATH:$HOME/local/lib/pythonXXX/site-packages
 
 
 # Dependencies
@@ -62,3 +46,20 @@ For the intallations remember to set:
 
 ### Optional dependency (only for accessing some piio functionalities)
     numpy > 1.5
+    
+    
+
+# Optional system-wide installation
+
+    > python setup.py install 
+
+this compiles and installs the following python modules: pyglfw3, piio
+
+### Local Installation 
+
+    > python setup.py install  --prefix=$HOME/local
+
+For the intallations remember to set:
+
+    export PYTHONPATH=$PYTHONPATH:$HOME/local/lib/pythonXXX/site-packages
+
