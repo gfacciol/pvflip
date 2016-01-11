@@ -606,7 +606,7 @@ static void inplace_swap_pixels(struct iio_image *x, int i, int j, int a, int b)
 	if (x->dimension != 2)
 		fail("can only flip 2-dimensional images");
 	int w = x->sizes[0];
-	int h = x->sizes[1];
+	//int h = x->sizes[1]; // unused
 	int pixsize = x->pixel_dimension * iio_image_sample_size(x);
 	uint8_t *p = (i + j * w) * pixsize + (uint8_t*)x->data;
 	uint8_t *q = (a + b * w) * pixsize + (uint8_t*)x->data;
@@ -942,6 +942,15 @@ static void iio_hacky_uncolorize(struct iio_image *x)
 	case IIO_TYPE_UINT8: {
 		uint8_t (*xd)[3] = x->data;
 		uint8_t *r = xmalloc(n*sizeof*r);
+		FORI(n)
+			r[i] = .299*xd[i][0] + .587*xd[i][1] + .114*xd[i][2];
+		xfree(x->data);
+		x->data = r;
+		}
+		break;
+	case IIO_TYPE_UINT16: {
+		uint16_t (*xd)[3] = x->data;
+		uint16_t *r = xmalloc(n*sizeof*r);
 		FORI(n)
 			r[i] = .299*xd[i][0] + .587*xd[i][1] + .114*xd[i][2];
 		xfree(x->data);
@@ -2101,25 +2110,36 @@ static int read_beheaded_asc(struct iio_image *x,
 
 // PDS reader                                                               {{{2
 
+// read a line of text until either
+// 	- n characters are read
+// 	- a newline character is found
+// 	- the end of file is reached
+// returns the number of read characters, not including the end zero
+// Calling this functions should always result in a valid string on l
 static int getlinen(char *l, int n, FILE *f)
 {
 	int c, i = 0;
 	while (i < n-1 && (c = fgetc(f)) != EOF && c != '\n')
-		l[i++] = c;
+		if (isprint(c))
+			l[i++] = c;
+	if (c == EOF) return -1;
 	l[i] = '\0';
 	return i;
 }
 
+// parse a line of the form "KEY = VALUE"
 static void pds_parse_line(char *key, char *value, char *line)
 {
 	int r = sscanf(line, "%s = %s\n", key, value);
 	if (r != 2) {
 		*key = *value = '\0'; return; }
+	IIO_DEBUG("PARSED \"%s\" = \"%s\"\n", key, value);
 }
 
 static int read_beheaded_pds(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
+	(void)header; (void)nheader;
 	// check that the file is named, and not a pipe
 	const char *fn;
 	fn = global_variable_containing_the_name_of_the_last_opened_file;
@@ -2138,7 +2158,7 @@ static int read_beheaded_pds(struct iio_image *x,
 	int sfmt = SAMPLEFORMAT_UINT;
 	bool in_object = false;
 	bool flip_h = false, flip_v = false, allturn = false;
-	while (n = getlinen(line, nmax, f) && cx++ < nmax)
+	while ((n = getlinen(line, nmax, f)) >= 0  && cx++ < nmax)
 	{
 		pds_parse_line(key, value, line);
 		if (!*key || !*value) continue;
@@ -2155,11 +2175,14 @@ static int read_beheaded_pds(struct iio_image *x,
 		if (!strcmp(key, "SAMPLE_TYPE")) {
 			if (strstr(value, "REAL")) sfmt = SAMPLEFORMAT_IEEEFP;
 			if (strstr(value, "UNSIGNED")) sfmt = SAMPLEFORMAT_UINT;
+			if (strstr(value, "INTEGER"))sfmt=SAMPLEFORMAT_UINT;
 		}
 		if (!strcmp(key, "SAMPLE_DISPLAY_DIRECTION"))
 			flip_h = allturn !=! strcmp(value, "RIGHT");
 		if (!strcmp(key, "LINE_DISPLAY_DIRECTION"))
 			flip_v = allturn !=! strcmp(value, "DOWN");
+		// TODO: support the 8 possible rotations and orientations
+		// (RAW-equivalents: xy xY Xy XY yx yX Yx YX)
 		if (!strcmp(key, "END_OBJECT") && !strcmp(value, object_id+1))
 			break;
 	}
@@ -2214,7 +2237,7 @@ static int read_beheaded_csv(struct iio_image *x,
 {
 	// load whole file
 	long filesize;
-	uint8_t *filedata = load_rest_of_file(&filesize, fin, header, nheader);
+	char *filedata = load_rest_of_file(&filesize, fin, header, nheader);
 
 	// height = number of newlines
 	int h = 0;
@@ -2325,16 +2348,16 @@ static char *raw_prefix(const char *f)
 	return colon;
 }
 
-// if f ~ /RWA[.*]:.*/ return the position of the colon
-static char *rwa_prefix(const char *f)
-{
-	if (f != strstr(f, "RWA["))
-		return NULL;
-	char *colon = strchr(f, ':');
-	if (!colon || colon[-1] != ']')
-		return NULL;
-	return colon;
-}
+//// if f ~ /RWA[.*]:.*/ return the position of the colon
+//static char *rwa_prefix(const char *f)
+//{
+//	if (f != strstr(f, "RWA["))
+//		return NULL;
+//	char *colon = strchr(f, ':');
+//	if (!colon || colon[-1] != ']')
+//		return NULL;
+//	return colon;
+//}
 
 // explicit raw reader (input = a given block of memory)
 static int parse_raw_binary_image_explicit(struct iio_image *x,
@@ -2355,8 +2378,12 @@ static int parse_raw_binary_image_explicit(struct iio_image *x,
 	iio_image_build_independent(x, 2, sizes, sample_type, pd);
 	size_t n = nsamples * ss;
 	memcpy(x->data, header_bytes + (char*)data, n);
-	if (endianness)
-		switch_4endianness(x->data, nsamples);
+	if (endianness) {
+      if (ss == 2)
+		   switch_2endianness(x->data, nsamples);
+      if (ss >= 4)
+		   switch_4endianness(x->data, nsamples);
+   }
 	return 0;
 }
 
@@ -2485,6 +2512,7 @@ static int read_raw_named_image(struct iio_image *x, const char *filespec)
 static int read_beheaded_raw(struct iio_image *x,
 		FILE *f, char *header, int nheader)
 {
+	(void)f; (void)header; (void)nheader;
 	const char *fn;
 	fn = global_variable_containing_the_name_of_the_last_opened_file;
 	if (!fn)
@@ -2930,7 +2958,7 @@ bool buffer_statistics_agree_with_csv(uint8_t *b, int n)
 	char tmp[n+1];
 	memcpy(tmp, b, n);
 	tmp[n] = '\0';
-	return n = strspn(tmp, "0123456789.e+-,\n");
+	return (n = strspn(tmp, "0123456789.e+-,na\n"));
 	//IIO_DEBUG("strcspn(\"%s\") = %d\n", tmp, r);
 }
 
