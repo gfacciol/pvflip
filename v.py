@@ -1158,14 +1158,14 @@ def main():
         sys.exit(1)
     chdir(savepath)
 
+    # Create a windowed mode window and its OpenGL context
+    glfw.glfwWindowHint(glfw.GLFW_FOCUSED,  GL_FALSE);
+    glfw.glfwWindowHint(glfw.GLFW_DECORATED,  GL_TRUE);
+    window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
 
     # TODO REMOVE : needed for the text
     import OpenGL.GLUT as glut
     glut.glutInit()
-
-
-    # Create a windowed mode window and its OpenGL context
-    window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
 
 
     if not window:
