@@ -61,13 +61,13 @@ if not os.path.exists(libfile):
 if os.path.exists(libfile):
    _glfw_file = libfile
 else:                         
-   print 'BUILDING GLFW...'
+   print('BUILDING GLFW...')
    os.system('mkdir -p %s/build; cd %s/build; cmake  -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw%s %s '%(here,here, lib_ext, here))
-   print 'CLEANING BUILD...'
+   print('CLEANING BUILD...')
    if os.path.exists(libfile):
       os.system('rm -fr %s/build '%(here))
    else:
-      print "SORRY THE GLFW BUILD FAILED SOMEHOW, I WAS LOOKING FOR %d... LEAVING THE BUILD DIRECTORY..."%(libfile)
+      print("SORRY THE GLFW BUILD FAILED SOMEHOW, I WAS LOOKING FOR %d... LEAVING THE BUILD DIRECTORY..."%(libfile))
 
    _glfw_file = libfile
 
@@ -629,17 +629,17 @@ def %(callback)s(window, callback = None):
     return old_callback"""  % {'callback': callback, 'fun': fun}
     return code
 
-exec __callback__('Error')
-exec __callback__('Monitor')
-exec __callback__('WindowPos')
-exec __callback__('WindowSize')
-exec __callback__('WindowClose')
-exec __callback__('WindowRefresh')
-exec __callback__('WindowFocus')
-exec __callback__('WindowIconify')
-exec __callback__('FramebufferSize')
-exec __callback__('Key')
-exec __callback__('Char')
-exec __callback__('MouseButton')
-exec __callback__('CursorPos')
-exec __callback__('Scroll')
+exec(__callback__('Error'))
+exec(__callback__('Monitor'))
+exec(__callback__('WindowPos'))
+exec(__callback__('WindowSize'))
+exec(__callback__('WindowClose'))
+exec(__callback__('WindowRefresh'))
+exec(__callback__('WindowFocus'))
+exec(__callback__('WindowIconify'))
+exec(__callback__('FramebufferSize'))
+exec(__callback__('Key'))
+exec(__callback__('Char'))
+exec(__callback__('MouseButton'))
+exec(__callback__('CursorPos'))
+exec(__callback__('Scroll'))

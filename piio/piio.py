@@ -58,7 +58,7 @@ except OSError:
 try:
    os.stat(libiiofile)
 except OSError:
-   print 'BUILDING PIIO...'
+   print('BUILDING PIIO...')
    os.system('cd %s; python setup.py build'%here)
 
 libiio   = ctypes.CDLL(libiiofile)
@@ -162,7 +162,7 @@ def read_tiled_buffers(filename):
    tiles   = []
    out_nch = min(nch,4)
    if(nch != out_nch):
-      print "piio_read: the input image have %d channels, only the first 4 are loaded\n"%nch
+      print("piio_read: the input image have %d channels, only the first 4 are loaded\n"%nch)
    # generate several buffers, one for each tile
    for y in range(0,h, 1024):
       for x in range(0,w, 1024):
