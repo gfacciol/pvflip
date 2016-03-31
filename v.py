@@ -516,10 +516,10 @@ def change_image(new_idx):
    new_filename = sys.argv[new_idx+1]
 
    from os import stat 
-   #if new_idx in DD:
-   #   if new_filename != '-' and DD[new_idx].mtime < stat(new_filename).st_mtime:
-   #      print new_filename + ' has changed. Reloading...'
-   #      DD.pop(new_idx)
+   if new_idx in DD:
+      if new_filename != '-' and DD[new_idx].mtime < stat(new_filename).st_mtime:
+         print(new_filename + ' has changed. Reloading...')
+         DD.pop(new_idx)
 
    if new_idx not in DD:
       D = DD[new_idx] = ImageState()
@@ -628,7 +628,7 @@ def mouseButtons_callback(window, button, action, mods):
     elif button==glfw.GLFW_MOUSE_BUTTON_RIGHT and action==glfw.GLFW_RELEASE:
        x,y = glfw.glfwGetCursorPos (window)
        curr_x,curr_y = V.compute_image_coordinates(x,y)
-#       print curr_x, curr_y
+#       print(curr_x, curr_y)
        w0,h0 = int(curr_x)-int(x0),int(curr_y)-int(y0)
        b1state='released'
        xx0,yy0 = x0,y0
@@ -692,7 +692,7 @@ def keyboard_callback(window, key, scancode, action, mods):
     if V.mute_keyboard: # only mute the spacebar event
        return
 
-    #print key
+    #print(key)
 
     # navigate
     winx, winy= glfw.glfwGetFramebufferSize(window)
@@ -1165,7 +1165,7 @@ def main():
 
     # TODO REMOVE : needed for the text
     import OpenGL.GLUT as glut
-    glut.glutInit()
+    #glut.glutInit()
 
 
     if not window:

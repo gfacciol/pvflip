@@ -58,12 +58,35 @@ except OSError:
 try:
    os.stat(libiiofile)
 except OSError:
-   print 'BUILDING PIIO...'
+   print('BUILDING PIIO...')
    os.system('cd %s; python setup.py build'%here)
 
 libiio   = ctypes.CDLL(libiiofile)
 del libiiofile, here, lib_ext
 
+
+from numpy import prod,float64,ndarray,dtype
+def make_nd_array(c_pointer, shape, dtype=float64, order='C', own_data=True):
+    """
+    replacement for: np.ctypeslib.as_array(x)
+    that doesn't work with python3
+    http://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
+    """
+    arr_size = prod(shape[:]) * dtype(dtype).itemsize 
+    if sys.version_info.major >= 3:
+        buf_from_mem = ctypes.pythonapi.PyMemoryView_FromMemory
+        buf_from_mem.restype = ctypes.py_object
+        buf_from_mem.argtypes = (ctypes.c_void_p, ctypes.c_int, ctypes.c_int)
+        buffer = buf_from_mem(c_pointer, arr_size, 0x100)
+    else:
+        buf_from_mem = ctypes.pythonapi.PyBuffer_FromMemory
+        buf_from_mem.restype = ctypes.py_object
+        buffer = buf_from_mem(c_pointer, arr_size)
+    arr = ndarray(tuple(shape[:]), dtype, buffer, order=order)
+    if own_data and not arr.flags.owndata:
+        return arr.copy()
+    else:
+        return arr
 
 def read(filename):
    '''
@@ -79,7 +102,7 @@ def read(filename):
    nch=c_int()
    
    iioread.restype = c_void_p  # it's like this
-   tptr = iioread(str(filename),byref(w),byref(h),byref(nch))
+   tptr = iioread(str(filename).encode('ascii'),byref(w),byref(h),byref(nch))
    c_float_p = POINTER(c_float)       # define a new type of pointer
    ptr = cast(tptr, c_float_p)
    #print w,h,nch
@@ -89,9 +112,10 @@ def read(filename):
    #http://docs.scipy.org/doc/numpy/reference/generated/numpy.frombuffer.html
    
    # this numpy array uses the memory provided by the c library, which will be freed
-   data_tmp = ctypeslib.as_array( ptr, (h.value,w.value,nch.value) )
+   #data_tmp = ctypeslib.as_array( ptr, (h.value,w.value,nch.value) )
    # so we copy it to the definitive array before the free
-   data = data_tmp.copy()
+   #data = data_tmp.copy()
+   data = make_nd_array(ptr, (h.value,w.value,nch.value), dtype=np.float, order='C', own_data=True)
    
    # free the memory
    iiofreemem = libiio.freemem
@@ -113,7 +137,7 @@ def read_buffer(filename):
    nch=c_int()
    
    iioread.restype = c_void_p  # it's like this
-   tptr = iioread(str(filename),byref(w),byref(h),byref(nch))
+   tptr = iioread(str(filename).encode('ascii'),byref(w),byref(h),byref(nch))
    c_float_p = POINTER(c_float)       # define a new type of pointer
    ptr = cast(tptr, c_float_p)
    #print w,h,nch
@@ -144,7 +168,7 @@ def read_tiled_buffers(filename):
    nch=c_int()
    
    libiio.iio_read_image_float_vec.restype = c_void_p  # it's like this
-   tptr = libiio.iio_read_image_float_vec(str(filename),byref(w),byref(h),byref(nch))
+   tptr = libiio.iio_read_image_float_vec(str(filename).encode('ascii'),byref(w),byref(h),byref(nch))
    c_float_p = POINTER(c_float)       # define a new type of pointer
    ptr = cast(tptr, c_float_p)
    #print w,h,nch
@@ -162,7 +186,7 @@ def read_tiled_buffers(filename):
    tiles   = []
    out_nch = min(nch,4)
    if(nch != out_nch):
-      print "piio_read: the input image have %d channels, only the first 4 are loaded\n"%nch
+      print("piio_read: the input image have %d channels, only the first 4 are loaded\n"%nch)
    # generate several buffers, one for each tile
    for y in range(0,h, 1024):
       for x in range(0,w, 1024):
@@ -230,7 +254,7 @@ def write(filename,data):
 
    iiosave.restype = None
    iiosave.argtypes = [c_char_p, ndpointer(c_float),c_int,c_int,c_int]
-   iiosave(str(filename), data.astype('float32'), w, h, nch)
+   iiosave(str(filename).encode('ascii'), data.astype('float32'), w, h, nch)
 
 
 #d = piio.read('testimg.tif')
