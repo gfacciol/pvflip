@@ -67,7 +67,7 @@ else:
    if os.path.exists(libfile):
       os.system('rm -fr %s/build '%(here))
    else:
-      print("SORRY THE GLFW BUILD FAILED SOMEHOW, I WAS LOOKING FOR %d... LEAVING THE BUILD DIRECTORY..."%(libfile))
+      print("SORRY THE GLFW BUILD FAILED SOMEHOW, I WAS LOOKING FOR %s... LEAVING THE BUILD DIRECTORY..."%(libfile))
 
    _glfw_file = libfile
 

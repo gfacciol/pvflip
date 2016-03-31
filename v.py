@@ -1165,7 +1165,8 @@ def main():
 
     # TODO REMOVE : needed for the text
     import OpenGL.GLUT as glut
-    #glut.glutInit()
+    if not glut.INITIALIZED:
+        glut.glutInit()
 
 
     if not window:
