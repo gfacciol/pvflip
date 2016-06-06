@@ -15,6 +15,8 @@
 
 from OpenGL.GL import *
 from OpenGL.GL.shaders import *
+# TODO REMOVE : needed for the text
+import OpenGL.GLUT as glut
 import glfw
 import sys
 
@@ -507,20 +509,31 @@ def load_image(imagename):
 
 
 def change_image(new_idx):
-   '''updates D and DD: acts as a cache of the images'''
+   '''updates D and DD: acts as a cache of the images
+      returns the idx value of the next valid image
+   '''
    global D,DD
 
    BUFF=10  # BUFFERED IMAGES
-   NUM_FILES = (len(sys.argv)-1)
-   new_idx = new_idx % NUM_FILES
+   NUM_FILES    = (len(sys.argv)-1)
+   new_idx_bak  = new_idx
+   new_idx      = new_idx % NUM_FILES
    new_filename = sys.argv[new_idx+1]
 
-   from os import stat 
+   from os import stat, path
+   # chech if the file exist
+   if not path.exists(new_filename):
+      print(new_filename + ' doesn\'t exist. Skipping...')
+      sys.argv.pop(new_idx+1)
+      return new_idx_bak
+
+   # check if the file was already read before
    if new_idx in DD:
       if new_filename != '-' and DD[new_idx].mtime < stat(new_filename).st_mtime:
          print(new_filename + ' has changed. Reloading...')
          DD.pop(new_idx)
 
+   # the image seems to be there
    if new_idx not in DD:
       D = DD[new_idx] = ImageState()
 
@@ -914,7 +927,7 @@ def display( window ):
 
 
     def drawHud(str,color=(0,1,0)):
-       import OpenGL.GLUT as glut
+       #import OpenGL.GLUT as glut
        #  A pointer to a font style..
        #  Fonts supported by GLUT are: GLUT_BITMAP_8_BY_13,
        #  GLUT_BITMAP_9_BY_15, GLUT_BITMAP_TIMES_ROMAN_10,
@@ -1163,10 +1176,9 @@ def main():
     glfw.glfwWindowHint(glfw.GLFW_DECORATED,  GL_TRUE);
     window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
 
-    # TODO REMOVE : needed for the text
-    import OpenGL.GLUT as glut
+
     if not glut.INITIALIZED:
-        glut.glutInit()
+        glut.glutInit([])
 
 
     if not window:
