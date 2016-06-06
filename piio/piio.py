@@ -115,7 +115,7 @@ def read(filename):
    #data_tmp = ctypeslib.as_array( ptr, (h.value,w.value,nch.value) )
    # so we copy it to the definitive array before the free
    #data = data_tmp.copy()
-   data = make_nd_array(ptr, (h.value,w.value,nch.value), dtype=np.float, order='C', own_data=True)
+   data = make_nd_array(ptr, (h.value,w.value,nch.value), dtype=numpy.float, order='C', own_data=True)
    
    # free the memory
    iiofreemem = libiio.freemem
