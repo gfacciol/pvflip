@@ -149,6 +149,27 @@ rgba_shader = """
    }
    """
 
+rgb_shader = """
+   uniform sampler2D src;
+   uniform float shader_a;
+   uniform int   shader_c;
+   uniform float shader_B0;
+   uniform float shader_B1;
+   uniform float shader_B2;
+
+   void main (void)
+   {
+      vec4 p = texture2D(src, gl_TexCoord[0].xy);
+      vec4 B = vec4(shader_B0, shader_B1, shader_B2, 0);
+
+      p = p * shader_a + B;
+      if (shader_c > 0)
+         p = 1.0 - p;
+      gl_FragColor = clamp(p , 0.0, 1.0);
+      //gl_FragColor = gl_Color*shader_a; // the color of the triangle
+   }
+   """
+
 rb_shader = """
    uniform sampler2D src;
    uniform float shader_a;
@@ -291,7 +312,8 @@ SHADERS = {
       'rb'   : rb_shader, 
       'dhsv' : depth_shader_hsv,
       'djet' : depth_shader_jet,
-      'ddirt': depth_shader_dirt
+      'ddirt': depth_shader_dirt,
+      'rgb'  : rgb_shader,
       }
 SHADER_PROGRAMS = {}
 
@@ -305,9 +327,11 @@ class ViewportState:
    scale_param = 1.0      ## TODO internal variables should not be here
    bias_param  = 0
    inv_param   = 0
+   bias_vector = [0,0,0]
 
    v_center = 0.5
    v_radius = 0.5
+   v_center_vector = [0.5, 0.5, 0.5]
 
    dx,dy=0,0
    dragdx,dragdy=0,0
@@ -360,6 +384,9 @@ class ViewportState:
       if V.v_radius:
          V.scale_param = 1/(2.0*V.v_radius)
       V.bias_param  = -(V.v_center-V.v_radius)*V.scale_param
+      V.bias_vector[0] = (V.v_radius - V.v_center_vector[0])*V.scale_param
+      V.bias_vector[1] = (V.v_radius - V.v_center_vector[1])*V.scale_param
+      V.bias_vector[2] = (V.v_radius - V.v_center_vector[2])*V.scale_param
       V.inv_param   = 0
       V.redisp=1
 
@@ -371,21 +398,34 @@ class ViewportState:
    def center_update(V, offset):
       d = V.v_radius*.1
       V.v_center = min(max(V.v_center + d*offset,V.data_min),V.data_max)
+      V.v_center_vector[0] = min(max(V.v_center_vector[0] + d*offset,V.data_min),V.data_max)
+      V.v_center_vector[1] = min(max(V.v_center_vector[1] + d*offset,V.data_min),V.data_max)
+      V.v_center_vector[2] = min(max(V.v_center_vector[2] + d*offset,V.data_min),V.data_max)
       V.update_scale_and_bias()
 
    def center_update_value(V, centerval):
       V.v_center = centerval
       V.update_scale_and_bias()
+
+   def center_update_vector(V, centervec):
+      V.v_center_vector = centervec
+      V.update_scale_and_bias()
    
    def reset_scale_bias(V):
-      V.v_center=(V.data_max+V.data_min)/2.0
       V.v_radius=(V.data_max-V.data_min)/2.0
+      V.v_center=(V.data_max+V.data_min)/2.0
+      V.v_center_vector[0] = V.v_center
+      V.v_center_vector[1] = V.v_center
+      V.v_center_vector[2] = V.v_center
       V.update_scale_and_bias()
 
 
    def reset_range_to_8bits(V): 
       V.v_center = 127.5
       V.v_radius = 127.5
+      V.v_center_vector[0] = V.v_center
+      V.v_center_vector[1] = V.v_center
+      V.v_center_vector[2] = V.v_center
       V.update_scale_and_bias()
 
 
@@ -522,10 +562,10 @@ def change_image(new_idx):
 
    from os import stat, path
    # chech if the file exist
-   if not path.exists(new_filename):
-      print(new_filename + ' doesn\'t exist. Skipping...')
-      sys.argv.pop(new_idx+1)
-      return new_idx_bak
+   #if not path.exists(new_filename):
+   #   print(new_filename + ' doesn\'t exist. Skipping...')
+   #   sys.argv.pop(new_idx+1)
+   #   return new_idx_bak
 
    # check if the file was already read before
    if new_idx in DD:
@@ -601,6 +641,8 @@ def mouseMotion_callback(window, x,y):
        centerval = D.get_image_point(int(tx),int(ty))
        if not (centerval==None or math.isnan(sum(centerval)) or math.isinf(sum(centerval))):
           V.center_update_value(sum(centerval)/len(centerval))
+          if len(centerval)==3:
+              V.center_update_vector(centerval)
           V.mute_sweep=1
 
 
@@ -973,13 +1015,16 @@ def display( window ):
           V.inv_param=0
           program  = SHADER_PROGRAMS['rgba']
     else:
-       V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 3
+       V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 4
        if V.TOGGLE_FLOW_COLORS == 1:
           V.inv_param=0
           program  = SHADER_PROGRAMS['hsv']
        elif V.TOGGLE_FLOW_COLORS == 2:
           V.inv_param=1
           program  = SHADER_PROGRAMS['rgba']
+       elif V.TOGGLE_FLOW_COLORS == 3:
+          V.inv_param=0
+          program  = SHADER_PROGRAMS['rgb']
        else:
           V.inv_param=0
           program  = SHADER_PROGRAMS['rgba']
@@ -992,6 +1037,13 @@ def display( window ):
     glUniform1f(shader_b,V.bias_param)
     shader_c= glGetUniformLocation(program, "shader_c")
     glUniform1i(shader_c,V.inv_param)
+
+    shader_B0 = glGetUniformLocation(program, "shader_B0")
+    glUniform1f(shader_B0, V.bias_vector[0])
+    shader_B1 = glGetUniformLocation(program, "shader_B1")
+    glUniform1f(shader_B1, V.bias_vector[1])
+    shader_B2 = glGetUniformLocation(program, "shader_B2")
+    glUniform1f(shader_B2, V.bias_vector[2])
 
     # DRAW THE IMAGE
     textureID=13
