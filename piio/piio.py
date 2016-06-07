@@ -65,14 +65,15 @@ libiio   = ctypes.CDLL(libiiofile)
 del libiiofile, here, lib_ext
 
 
-from numpy import prod,float64,ndarray,dtype
+from numpy import prod,float64,ndarray
+from numpy import dtype as npdtype
 def make_nd_array(c_pointer, shape, dtype=float64, order='C', own_data=True):
     """
     replacement for: np.ctypeslib.as_array(x)
     that doesn't work with python3
     http://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
     """
-    arr_size = prod(shape[:]) * dtype(dtype).itemsize 
+    arr_size = prod(shape[:]) * npdtype(dtype).itemsize 
     if sys.version_info.major >= 3:
         buf_from_mem = ctypes.pythonapi.PyMemoryView_FromMemory
         buf_from_mem.restype = ctypes.py_object
@@ -92,7 +93,7 @@ def read(filename):
    '''
    IIO: numpyarray = read(filename)
    '''
-   from numpy import ctypeslib
+   from numpy import ctypeslib, float64
    from ctypes import c_int, c_float, c_void_p, POINTER, cast, byref
 
    iioread = libiio.iio_read_image_float_vec
@@ -115,7 +116,7 @@ def read(filename):
    #data_tmp = ctypeslib.as_array( ptr, (h.value,w.value,nch.value) )
    # so we copy it to the definitive array before the free
    #data = data_tmp.copy()
-   data = make_nd_array(ptr, (h.value,w.value,nch.value), dtype=np.float, order='C', own_data=True)
+   data = make_nd_array(ptr, (h.value,w.value,nch.value), dtype=float64, order='C', own_data=True)
    
    # free the memory
    iiofreemem = libiio.freemem
