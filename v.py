@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
@@ -562,10 +562,10 @@ def change_image(new_idx):
 
    from os import stat, path
    # chech if the file exist
-   #if not path.exists(new_filename):
-   #   print(new_filename + ' doesn\'t exist. Skipping...')
-   #   sys.argv.pop(new_idx+1)
-   #   return new_idx_bak
+   if new_filename != '-' and not path.exists(new_filename):
+      print(new_filename + ' doesn\'t exist. Skipping...')
+      sys.argv.pop(new_idx+1)
+      return new_idx_bak
 
    # check if the file was already read before
    if new_idx in DD:
