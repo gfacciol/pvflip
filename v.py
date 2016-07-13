@@ -569,7 +569,7 @@ def change_image(new_idx):
 
    # check if the file was already read before
    if new_idx in DD:
-      if new_filename != '-' and DD[new_idx].mtime < stat(new_filename).st_mtime:
+      if new_filename != '-' and not new_filename.startswith('/dev/') and DD[new_idx].mtime < stat(new_filename).st_mtime:
          print(new_filename + ' has changed. Reloading...')
          DD.pop(new_idx)
 
