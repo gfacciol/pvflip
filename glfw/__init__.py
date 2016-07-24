@@ -40,10 +40,7 @@ _glfw_file = None
 # ADDED FOR PYTHON PACKAGE
 if sys.platform.startswith('win'):
    lib_ext = '.dll'
-   if platform.architecture()[0] == '64bit':
-      lib_basename = 'glfw-3.0.4.bin.WIN64/lib-mingw/glfw3'
-   else:
-      lib_basename = 'glfw-3.0.4.bin.WIN32/lib-mingw/glfw3'
+   lib_basename = 'glfw-3.0.4.bin.WIN32/lib-mingw/glfw3'
 elif sys.platform == 'darwin':
    lib_ext = '.dylib'
    lib_basename = 'glfw-3.0.4.bin.MAC64/libglfw'

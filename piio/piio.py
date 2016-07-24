@@ -31,12 +31,9 @@ import os,sys,ctypes,platform
 lib_ext = '.so'
 here  = os.path.dirname(__file__)
 
-if sys.platform.startswith('win'): 
+if sys.platform.startswith('win'): #precompiled windows
    lib_ext = '.dll'
-   if platform.architecture()[0] == '64bit':   #precompiled windows
-      lib_basename = 'WIN64/iio'
-   else:      
-      lib_basename = 'WIN32/iio'
+   lib_basename = 'WIN32/iio'
 elif sys.platform.startswith('darwin'): # precompiled osx intel 64 bits
    lib_basename = 'MAC64/libiio'
    lib_ext = '.so'
