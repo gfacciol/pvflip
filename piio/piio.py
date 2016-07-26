@@ -33,7 +33,10 @@ here  = os.path.dirname(__file__)
 
 if sys.platform.startswith('win'): #precompiled windows
    lib_ext = '.dll'
-   lib_basename = 'WIN32/iio'
+   if platform.architecture()[0] == '64bit':   #precompiled windows
+      lib_basename = 'WIN64/iio'
+   else:      
+      lib_basename = 'WIN32/iio'
 elif sys.platform.startswith('darwin'): # precompiled osx intel 64 bits
    lib_basename = 'MAC64/libiio'
    lib_ext = '.so'
