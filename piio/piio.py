@@ -110,10 +110,10 @@ def read(filename):
    #http://docs.scipy.org/doc/numpy/reference/generated/numpy.frombuffer.html
    
    # this numpy array uses the memory provided by the c library, which will be freed
-   #data_tmp = ctypeslib.as_array( ptr, (h.value,w.value,nch.value) )
+   data_tmp = ctypeslib.as_array( ptr, (h.value,w.value,nch.value) )
    # so we copy it to the definitive array before the free
-   #data = data_tmp.copy()
-   data = make_nd_array(ptr, (h.value,w.value,nch.value), dtype=float64, order='C', own_data=True)
+   data = data_tmp.copy()
+   #data = make_nd_array(ptr, (h.value,w.value,nch.value), dtype=float64, order='C', own_data=True)
    
    # free the memory
    iiofreemem = libiio.freemem
@@ -228,8 +228,8 @@ def buffer_to_numpy(data,w,h,nch):
    '''
    IIO: numpyarray = buffer_to_numpy(float_buffer,w,h,nch)
    '''
-   import numpy 
-   dataNP = numpy.frombuffer(data,numpy.float32)
+   from numpy import frombuffer,float32
+   dataNP = frombuffer(data,float32)
    dataNP = dataNP.reshape((h.value,w.value,nch.value))
    return dataNP
 
