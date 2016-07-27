@@ -890,6 +890,7 @@ def keyboard_callback(window, key, scancode, action, mods):
     # exit
     if (key==glfw.GLFW_KEY_Q  or key==glfw.GLFW_KEY_ESCAPE ) and action ==glfw.GLFW_PRESS:
        glfw.glfwSetWindowShouldClose(window,1)
+       glfw.glfwTerminate()
        global x0,y0,w0,h0
        print(x0,y0,w0,h0)
        sys.exit(0)
