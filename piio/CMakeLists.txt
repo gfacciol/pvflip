@@ -80,7 +80,7 @@ ENDIF()
 #
 SET(C_FLAGS "${C_FLAGS} -O3 -std=c99 -funroll-loops -Wno-unused -DNDEBUG")
 MESSAGE( "FLAGS: ${C_FLAGS}")
-SET(IIO_LIB_SRCS iio.h iio.c ${IIO_LIB_EXTRA_SRCS})       #Define a variable that contains files of the lib
+SET(IIO_LIB_SRCS iio.h iio.c freemem.c ${IIO_LIB_EXTRA_SRCS})       #Define a variable that contains files of the lib
 ADD_LIBRARY(IIOLIB ${IIO_LIB_SRCS}) #Define that those files create the lib FooLib
 TARGET_LINK_LIBRARIES(IIOLIB ${LIBS})
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}" )
