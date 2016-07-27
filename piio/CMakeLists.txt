@@ -12,7 +12,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 #
 #
 SET_DIRECTORY_PROPERTIES (PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES 
-   "iioConfig.cmake;CMakeCache.txt;CMakeFiles;Makefile;cmake_install.cmake;iio;iion;iio.o")
+   "iioConfig.cmake;CMakeCache.txt;Makefile;cmake_install.cmake;iio.o;CMakeFiles")
 
 
 # LIBRARIES
@@ -41,6 +41,9 @@ IF (LibRaw_INCLUDE_DIR)
    INCLUDE_DIRECTORIES(${LibRaw_INCLUDE_DIR})
    SET(LIBS ${LIBS} ${LibRaw_LIBRARIES})
    SET(IIO_LIB_EXTRA_SRCS libraw_interface.cpp)    #c++ interface to libraw
+   # Some LibRaw versions depend on openmp
+   find_package (OpenMP)
+   set (C_FLAGS "${C_FLAGS} ${OpenMP_C_FLAGS}")
 ENDIF()
 
 # OTHER LIBRARIES
