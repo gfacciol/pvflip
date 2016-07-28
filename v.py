@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
