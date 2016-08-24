@@ -2,6 +2,7 @@
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
+# 08/2016: change glfw to add drag-and-drop, support for retina displays
 # 06/2015: add snapshot key S 
 # 05/2015: organize shaders
 # 04/2015: use os.stat to detect changes file changes
@@ -989,11 +990,18 @@ def display( window ):
     # ideally winx,winy should be equal to D.w,D.h BUT if the 
     # image is larger than the screen glutReshapeWindow(D.w,D.h) 
     # will fail and winx,winy will be truncated to the size of the screen
-    winx, winy= glfw.get_framebuffer_size(window)
-#    winx, winy= glfw.get_window_size(window)
+#    winx, winy= glfw.get_framebuffer_size(window)
+    winx, winy= glfw.get_window_size(window)
     V.winx,V.winy=winx,winy
 
-    glViewport(0, 0, winx, winy);
+
+    # Query the native frame buffer resolution to honor HDPI monitors
+    # https://github.com/adrianbroher/freetype-gl/commit/c8474a9f1723e013219ab871d6f40cf86159fe87
+    fb_width,fb_height = glfw.get_framebuffer_size(window)
+    display_scale = fb_width / winx
+    #print(display_scale)
+
+    glViewport(0, 0, winx*display_scale, winy*display_scale);
 
     # setup camera
     glMatrixMode (GL_PROJECTION);
@@ -1034,7 +1042,9 @@ def display( window ):
        #  GLUT_BITMAP_9_BY_15, GLUT_BITMAP_TIMES_ROMAN_10,
        #  GLUT_BITMAP_TIMES_ROMAN_24, GLUT_BITMAP_HELVETICA_10,
        #  GLUT_BITMAP_HELVETICA_12, and GLUT_BITMAP_HELVETICA_18.
-       font_style = glut.GLUT_BITMAP_8_BY_13;
+       font_style = glut.GLUT_BITMAP_8_BY_13
+       if display_scale>1:                  # RETINA
+          font_style = glut.GLUT_BITMAP_HELVETICA_18
        glColor3f(color[0], color[1], color[2]);
        line=0;
        glRasterPos3f (8, 13+13*line,.5)
