@@ -14,6 +14,10 @@
 # v00 : stable but no translation with mouse drag
 # v-1 : no event mutex
 
+from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
+
 from OpenGL.GL import *
 from OpenGL.GL.shaders import *
 # TODO REMOVE : needed for the text
@@ -574,7 +578,7 @@ def remove_current_image():
     print ("Dropping %s"%name)
 
     if current_image_idx in DD:
-       print DD[current_image_idx]
+       print(DD[current_image_idx])
        DD.pop(current_image_idx)
     return True
 
@@ -1001,7 +1005,7 @@ def display( window ):
     display_scale = fb_width / winx
     #print(display_scale)
 
-    glViewport(0, 0, winx*display_scale, winy*display_scale);
+    glViewport(0, 0, int(winx*display_scale), int(winy*display_scale));
 
     # setup camera
     glMatrixMode (GL_PROJECTION);
