@@ -152,18 +152,47 @@ def _glfw_get_version(filename):
     else:
         return None
 
-if sys.platform == 'win32':
-    # only try glfw3.dll on windows
+here = os.path.dirname(__file__)
+if sys.platform.startswith('win'):
+    # try the procompiled files
     try:
-        _glfw = ctypes.CDLL('glfw3.dll')
+        if platform.architecture()[0] == '64bit':
+            _glfw = ctypes.CDLL(os.path.join(here,'glfw-3.2.1.bin.WIN64/lib-mingw64/glfw3.dll'))
+        else:
+            _glfw = ctypes.CDLL(os.path.join(here,'glfw-3.2.1.bin.WIN32/lib-mingw/glfw3.dll'))
     except OSError:
-        _glfw = None
-else:
+        # only try glfw3.dll on windows
+        try:
+            _glfw = ctypes.CDLL('glfw3.dll')
+        except OSError:
+            _glfw = None
+#if sys.platform == 'win32':
+#    # only try glfw3.dll on windows
+#    try:
+#        _glfw = ctypes.CDLL('glfw3.dll')
+#    except OSError:
+#        _glfw = None
+else:   # not Windows -> Linux or Mac
     _glfw = _load_library(['glfw', 'glfw3'], ['.so', '.dylib'],
-                          ['',
-                           '/usr/lib64', '/usr/local/lib64',
-                           '/usr/lib', '/usr/local/lib',
-                           '/usr/lib/x86_64-linux-gnu/'], _glfw_get_version)
+                      ['',
+                       here,
+                       os.path.join(here,'glfw-3.3.bin.MAC64/'),
+                       '/usr/lib64', '/usr/local/lib64',
+                       '/usr/lib', '/usr/local/lib',
+                       '/usr/lib/x86_64-linux-gnu/'], _glfw_get_version)
+    if _glfw == None:
+        print('BUILDING GLFW...')
+        os.system('mkdir -p %s/build; cd %s/build; cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw.{so,dylib} %s '%(here,here, here))
+        try:
+           _glfw = _load_library(['glfw', 'glfw3'], ['.so', '.dylib'],
+                          ['', here,], _glfw_get_version)
+           if _glfw == None:
+              raise OSError('Library file not found')
+           print('CLEANING BUILD...')
+           os.system('rm -fr %s/build '%(here))
+        except OSError:
+           print("SORRY: THE GLFW BUILD FAILED")
+           _glfw = None
 
 if _glfw is None:
     raise ImportError("Failed to load GLFW3 shared library.")
