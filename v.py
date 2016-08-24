@@ -548,6 +548,36 @@ def load_image(imagename):
       print('error reading the image')
 
 
+def insert_images(filenames):
+   global current_image_idx
+   import sys
+
+   # insert the files starting from the current image
+   filenames.reverse()
+   for n in filenames:
+      print("Adding: %s"%n)
+      sys.argv.insert(current_image_idx+2,n)
+
+
+def remove_current_image():
+    ''' returns true if succeded removing the image'''
+    global DD, V, current_image_idx
+    import sys
+
+    # don't remove the last image
+    if len(sys.argv) <= 2:
+       return False
+
+    # remove the image from argv and DD
+    name = sys.argv.pop(current_image_idx+1)
+    print ("Dropping %s"%name)
+
+    if current_image_idx in DD:
+       print DD[current_image_idx]
+       DD.pop(current_image_idx)
+    return True
+
+
 def change_image(new_idx):
    '''updates D and DD: acts as a cache of the images
       returns the idx value of the next valid image
@@ -569,7 +599,8 @@ def change_image(new_idx):
 
    # check if the file was already read before
    if new_idx in DD:
-      if new_filename != '-' and not new_filename.startswith('/dev/') and DD[new_idx].mtime < stat(new_filename).st_mtime:
+      if new_filename != '-' and not new_filename.startswith('/dev/') and \
+        (DD[new_idx].mtime < stat(new_filename).st_mtime or DD[new_idx].filename != new_filename):
          print(new_filename + ' has changed. Reloading...')
          DD.pop(new_idx)
 
@@ -655,7 +686,7 @@ def mouseMotion_callback(window, x,y):
           V.txt_val = '%s %s'%(centerval[0], centerval[1])
        else:
           V.txt_val = '%s %s %s'%(centerval[0], centerval[1], centerval[2])
-       glfw.glfwSetWindowTitle(window, '%s:[%s]'%(V.txt_pos,V.txt_val))
+       glfw.set_window_title(window, '%s:[%s]'%(V.txt_pos,V.txt_val))
 
     # Update viewport mouse position
     V.mx, V.my = x, y
@@ -665,7 +696,7 @@ def mouseMotion_callback(window, x,y):
 
 
 #    title='p:%s,%s [+%s+%s %sx%s]' % (x+V.dx,y+V.dy,x0+V.dx,y0+V.dy,w0,h0)
-#    glfw.glfwSetWindowTitle(window, title)
+#    glfw.set_window_title(window, title)
 
 
 
@@ -674,14 +705,14 @@ def mouseButtons_callback(window, button, action, mods):
     global x0,y0,w0,h0,b0state,b1state
 
     # select region
-    if button==glfw.GLFW_MOUSE_BUTTON_RIGHT and action==glfw.GLFW_PRESS:
-       x,y = glfw.glfwGetCursorPos (window)
+    if button==glfw.MOUSE_BUTTON_RIGHT and action==glfw.PRESS:
+       x,y = glfw.get_cursor_pos (window)
        x0,y0 = V.compute_image_coordinates(x,y)
        w0,h0=0,0
        b1state='pressed'
        V.redisp=1
-    elif button==glfw.GLFW_MOUSE_BUTTON_RIGHT and action==glfw.GLFW_RELEASE:
-       x,y = glfw.glfwGetCursorPos (window)
+    elif button==glfw.MOUSE_BUTTON_RIGHT and action==glfw.RELEASE:
+       x,y = glfw.get_cursor_pos (window)
        curr_x,curr_y = V.compute_image_coordinates(x,y)
 #       print(curr_x, curr_y)
        w0,h0 = int(curr_x)-int(x0),int(curr_y)-int(y0)
@@ -693,14 +724,14 @@ def mouseButtons_callback(window, button, action, mods):
        V.redisp=1
 
     # drag
-    if button==glfw.GLFW_MOUSE_BUTTON_LEFT and action==glfw.GLFW_PRESS:
-       x,y = glfw.glfwGetCursorPos (window)
+    if button==glfw.MOUSE_BUTTON_LEFT and action==glfw.PRESS:
+       x,y = glfw.get_cursor_pos (window)
        V.dragx0,V.dragy0 = V.compute_image_coordinates(x,y)
        V.dragdx,V.dragdy=0,0
        b0state='pressed'
        V.redisp=1
-    elif button==glfw.GLFW_MOUSE_BUTTON_LEFT and action==glfw.GLFW_RELEASE:
-       x,y = glfw.glfwGetCursorPos (window)
+    elif button==glfw.MOUSE_BUTTON_LEFT and action==glfw.RELEASE:
+       x,y = glfw.get_cursor_pos (window)
        curr_x,curr_y = V.compute_image_coordinates(x,y)
        V.dragdx,V.dragdy = curr_x-V.dragx0,curr_y-V.dragy0
        b0state='released'
@@ -725,7 +756,7 @@ def mouseWheel_callback(window, xoffset, yoffset):
          V.mute_wheel_buffer = [0,0]
          V.mute_wheel=1
 
-      curr_x,curr_y = glfw.glfwGetCursorPos (window)
+      curr_x,curr_y = glfw.get_cursor_pos (window)
 
       # zoom
       if V.alt_is_pressed:
@@ -750,22 +781,22 @@ def keyboard_callback(window, key, scancode, action, mods):
     #print(key)
 
     # navigate
-    winx, winy= glfw.glfwGetFramebufferSize(window)
-    if key==glfw.GLFW_KEY_RIGHT and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    winx, winy= glfw.get_framebuffer_size(window)
+    if key==glfw.KEY_RIGHT and (action==glfw.PRESS or action==glfw.REPEAT):
        V.translation_update(winx/4/V.zoom_param,0)
-    elif key==glfw.GLFW_KEY_UP and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    elif key==glfw.KEY_UP and (action==glfw.PRESS or action==glfw.REPEAT):
        V.translation_update(0,-winy/4/V.zoom_param)
-    elif key==glfw.GLFW_KEY_LEFT and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    elif key==glfw.KEY_LEFT and (action==glfw.PRESS or action==glfw.REPEAT):
        V.translation_update(-winx/4/V.zoom_param,0)
-    elif key==glfw.GLFW_KEY_DOWN and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    elif key==glfw.KEY_DOWN and (action==glfw.PRESS or action==glfw.REPEAT):
        V.translation_update(0,winy/4/V.zoom_param)
 
     #contrast change
-    if key==glfw.GLFW_KEY_E and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    if key==glfw.KEY_E and (action==glfw.PRESS or action==glfw.REPEAT):
        V.radius_update(1)
-    if key==glfw.GLFW_KEY_D and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    if key==glfw.KEY_D and (action==glfw.PRESS or action==glfw.REPEAT):
        V.radius_update(-1)
-    if key==glfw.GLFW_KEY_C and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_C and action==glfw.PRESS:
        V.reset_scale_bias()
        if V.shift_is_pressed:
          V.TOGGLE_AUTOMATIC_RANGE = (V.TOGGLE_AUTOMATIC_RANGE + 1) % 2
@@ -775,14 +806,14 @@ def keyboard_callback(window, key, scancode, action, mods):
             print("automatic range disabled")
          
 
-    if key==glfw.GLFW_KEY_B and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT): 
+    if key==glfw.KEY_B and (action==glfw.PRESS or action==glfw.REPEAT): 
        V.reset_range_to_8bits()
        V.TOGGLE_AUTOMATIC_RANGE = 0
        print("range set to [0,255]")
 
 
     # (SAVE) write current buffer
-    if key==glfw.GLFW_KEY_S and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT): 
+    if key==glfw.KEY_S and (action==glfw.PRESS or action==glfw.REPEAT): 
        import numpy as np
        import piio
        from os import path
@@ -803,13 +834,13 @@ def keyboard_callback(window, key, scancode, action, mods):
 
 
     # zoom
-    if key==glfw.GLFW_KEY_P and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    if key==glfw.KEY_P and (action==glfw.PRESS or action==glfw.REPEAT):
        V.zoom_update(+1)
-    if key==glfw.GLFW_KEY_M and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    if key==glfw.KEY_M and (action==glfw.PRESS or action==glfw.REPEAT):
        V.zoom_update(-1)
 
     # fit image to window
-    if key==glfw.GLFW_KEY_F and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_F and action==glfw.PRESS:
        V.TOGGLE_FIT_TO_WINDOW_SIZE = (V.TOGGLE_FIT_TO_WINDOW_SIZE + 1) % 2
        if V.TOGGLE_FIT_TO_WINDOW_SIZE:
           print("ENABLE: fit image to window")
@@ -822,40 +853,47 @@ def keyboard_callback(window, key, scancode, action, mods):
 
 
     # reset visualization
-    if key==glfw.GLFW_KEY_R and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_R and action==glfw.PRESS:
        V.reset_zoom()
        V.reset_scale_bias()
 
     # reset visualization
-    if key==glfw.GLFW_KEY_1 and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_1 and action==glfw.PRESS:
        V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 5
        V.redisp = 1
 
 
 
     # modifier keys
-    if key==glfw.GLFW_KEY_LEFT_SHIFT and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_LEFT_SHIFT and action==glfw.PRESS:
        V.shift_is_pressed=1
-    if key==glfw.GLFW_KEY_LEFT_SHIFT and action==glfw.GLFW_RELEASE:
+    if key==glfw.KEY_LEFT_SHIFT and action==glfw.RELEASE:
        V.shift_is_pressed=0
-    if key==glfw.GLFW_KEY_Z   and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_Z   and action==glfw.PRESS:
        V.alt_is_pressed=1
-    if key==glfw.GLFW_KEY_Z   and action==glfw.GLFW_RELEASE:
+    if key==glfw.KEY_Z   and action==glfw.RELEASE:
        V.alt_is_pressed=0
 
 
     # CHANGE IMAGE TODO: use DataBackend DD
     global current_image_idx
     new_current_image_idx = current_image_idx
-    if key==glfw.GLFW_KEY_SPACE and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    if key==glfw.KEY_SPACE and (action==glfw.PRESS or action==glfw.REPEAT):
        new_current_image_idx = change_image(current_image_idx+1)
        if V.TOGGLE_AUTOMATIC_RANGE: V.reset_scale_bias()
        V.mute_keyboard=1
 
-    if key==glfw.GLFW_KEY_BACKSPACE and (action==glfw.GLFW_PRESS or action==glfw.GLFW_REPEAT):
+    if key==glfw.KEY_BACKSPACE and (action==glfw.PRESS or action==glfw.REPEAT):
        new_current_image_idx = change_image(current_image_idx-1)
        if V.TOGGLE_AUTOMATIC_RANGE: V.reset_scale_bias()
        V.mute_keyboard=1
+
+    if key==glfw.KEY_MINUS and (action==glfw.PRESS or action==glfw.REPEAT):
+       if remove_current_image():
+          new_current_image_idx = change_image(current_image_idx)
+          current_image_idx = -1  # force refresh: image index hasn't changed by the image has
+          if V.TOGGLE_AUTOMATIC_RANGE: V.reset_scale_bias()
+          V.mute_keyboard=1
 
     if not new_current_image_idx == current_image_idx:
        current_image_idx = new_current_image_idx
@@ -863,12 +901,12 @@ def keyboard_callback(window, key, scancode, action, mods):
        V.resize=1
 
     # display hud
-    if key==glfw.GLFW_KEY_U   and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_U   and action==glfw.PRESS:
        V.display_hud=(V.display_hud+1)%2
        V.redisp=1
 
     # help
-    if key==glfw.GLFW_KEY_H   and action==glfw.GLFW_PRESS:
+    if key==glfw.KEY_H   and action==glfw.PRESS:
        print("Q     : quit")
        print("U     : show/hide HUD")
        print("arrows: pan image")
@@ -882,15 +920,17 @@ def keyboard_callback(window, key, scancode, action, mods):
        print("R     : reset visualization: zoom,pan,range")
        print("1     : toggle optic flow coloring")
        print("S     : capture a snap##.png of the current view")
+       print("-     : drop current file from visualization list")
        print("mouse wheel: contrast center")
-       print("mouse wheel+shift: contrast scale")
+       print("mouse wheel+shift : contrast scale")
        print("mouse motion+shift: contrast center")
-       print("space/backspace : next/prev image")
+       print("space/backspace   : next/prev image")
+       print("drag&drop files   : add to list")
 
     # exit
-    if (key==glfw.GLFW_KEY_Q  or key==glfw.GLFW_KEY_ESCAPE ) and action ==glfw.GLFW_PRESS:
-       glfw.glfwSetWindowShouldClose(window,1)
-       glfw.glfwTerminate()
+    if (key==glfw.KEY_Q  or key==glfw.KEY_ESCAPE ) and action ==glfw.PRESS:
+       glfw.set_window_should_close(window,1)
+       glfw.terminate()
        global x0,y0,w0,h0
        print(x0,y0,w0,h0)
        sys.exit(0)
@@ -917,6 +957,24 @@ def unicode_char_callback(window, codepoint):
 
 
 
+def drop_callback(window, filenames):
+    global V
+    global current_image_idx
+
+    insert_images(filenames)
+
+    # change the image and refresh
+    new_current_image_idx = current_image_idx
+    new_current_image_idx = change_image(current_image_idx+1)
+    if V.TOGGLE_AUTOMATIC_RANGE: V.reset_scale_bias()
+    V.mute_keyboard=1
+
+    if not new_current_image_idx == current_image_idx:
+       current_image_idx = new_current_image_idx
+       V.redisp=1
+       V.resize=1
+
+
 
 def display( window ):
     """Render scene geometry"""
@@ -931,8 +989,8 @@ def display( window ):
     # ideally winx,winy should be equal to D.w,D.h BUT if the 
     # image is larger than the screen glutReshapeWindow(D.w,D.h) 
     # will fail and winx,winy will be truncated to the size of the screen
-    winx, winy= glfw.glfwGetFramebufferSize(window)
-#    winx, winy= glfw.glfwGetWindowSize(window)
+    winx, winy= glfw.get_framebuffer_size(window)
+#    winx, winy= glfw.get_window_size(window)
     V.winx,V.winy=winx,winy
 
     glViewport(0, 0, winx, winy);
@@ -1220,14 +1278,14 @@ def main():
     # for some reason glfwInit changes the current dir, so I change it back!
     from os import getcwd,chdir
     savepath = getcwd()
-    if not glfw.glfwInit():
+    if not glfw.init():
         sys.exit(1)
     chdir(savepath)
 
     # Create a windowed mode window and its OpenGL context
-    glfw.glfwWindowHint(glfw.GLFW_FOCUSED,  GL_FALSE);
-    glfw.glfwWindowHint(glfw.GLFW_DECORATED,  GL_TRUE);
-    window = glfw.glfwCreateWindow(D.w, D.h, "Vflip! (reloaded)", None, None)
+    glfw.window_hint(glfw.FOCUSED,  GL_TRUE);
+    glfw.window_hint(glfw.DECORATED,  GL_TRUE);
+    window = glfw.create_window(D.w, D.h, "Vflip! (reloaded)", None, None)
 
 
     if not glut.INITIALIZED:
@@ -1235,20 +1293,21 @@ def main():
 
 
     if not window:
-        glfw.glfwTerminate()
+        glfw.terminate()
         sys.exit(1)
 
     # Make the window's context current
-    glfw.glfwMakeContextCurrent(window)
+    glfw.make_context_current(window)
 
     # event handlers
-    glfw.glfwSetKeyCallback(window, keyboard_callback)
-    glfw.glfwSetMouseButtonCallback(window, mouseButtons_callback)
-    glfw.glfwSetScrollCallback(window, mouseWheel_callback)
-    glfw.glfwSetCursorPosCallback(window, mouseMotion_callback)
-    glfw.glfwSetFramebufferSizeCallback(window, resize_callback)
-    glfw.glfwSetWindowRefreshCallback(window,display)
-#    glfw.glfwSetCharCallback (window, unicode_char_callback)
+    glfw.set_key_callback(window, keyboard_callback)
+    glfw.set_mouse_button_callback(window, mouseButtons_callback)
+    glfw.set_scroll_callback(window, mouseWheel_callback)
+    glfw.set_cursor_pos_callback(window, mouseMotion_callback)
+    glfw.set_drop_callback(window, drop_callback)
+    glfw.set_framebuffer_size_callback(window, resize_callback)
+    glfw.set_window_refresh_callback(window,display)
+#    glfw.set_char_callback (window, unicode_char_callback)
     toc('glfw init')
 
 
@@ -1303,15 +1362,15 @@ def main():
 ##    glFlush()
 
     # Loop until the user closes the window
-    while not glfw.glfwWindowShouldClose(window):
+    while not glfw.window_should_close(window):
 
         # Render here
         if V.redisp:
            # Try to resize the window if needed
            # this process the window resize requests generated by the application
            # the user window resize requests requests go directly to resize_callback
-           if V.resize and not (D.w,D.h) == glfw.glfwGetFramebufferSize(window) and not V.window_has_been_resized_by_the_user:
-              glfw.glfwSetWindowSize(window,D.w,D.h)
+           if V.resize and not (D.w,D.h) == glfw.get_framebuffer_size(window) and not V.window_has_been_resized_by_the_user:
+              glfw.set_window_size(window,D.w,D.h)
               # I know it's not been the user so I reset the variable to 0
               V.window_has_been_resized_by_the_user=0
               V.resize = 0
@@ -1321,17 +1380,17 @@ def main():
            V.redisp = display(window)
 
            # Swap front and back buffers
-           glfw.glfwSwapBuffers(window)
+           glfw.swap_buffers(window)
            V.mute_wheel=0
            V.mute_sweep=0
            V.mute_keyboard=0
 
 
         # Poll for and process events
-        #glfw.glfwPollEvents()
-        glfw.glfwWaitEvents()
+        #glfw.poll_events()
+        glfw.wait_events()
 
-    glfw.glfwTerminate()
+    glfw.terminate()
 
 
 if __name__ == '__main__': main()
