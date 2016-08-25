@@ -18,6 +18,7 @@ ERROR_REPORTING = True
 
 import ctypes
 import os
+import platform
 import functools
 import glob
 import sys
@@ -157,7 +158,7 @@ if sys.platform.startswith('win'):
     # try the procompiled files
     try:
         if platform.architecture()[0] == '64bit':
-            _glfw = ctypes.CDLL(os.path.join(here,'glfw-3.2.1.bin.WIN64/lib-mingw64/glfw3.dll'))
+            _glfw = ctypes.CDLL(os.path.join(here,'glfw-3.2.1.bin.WIN64/lib-mingw-w64/glfw3.dll'))
         else:
             _glfw = ctypes.CDLL(os.path.join(here,'glfw-3.2.1.bin.WIN32/lib-mingw/glfw3.dll'))
     except OSError:
