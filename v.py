@@ -979,6 +979,9 @@ def drop_callback(window, filenames):
        V.redisp=1
        V.resize=1
 
+    # regain focus after drop
+    glfw.focus_window(window);
+
 
 
 def display( window ):
