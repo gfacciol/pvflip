@@ -137,6 +137,78 @@ hsv_shader = """
   }
    """
 
+bayer_shader = """
+   uniform sampler2D src;
+   uniform float shader_a;
+   uniform float shader_b;
+   uniform int   shader_c;
+   uniform vec2  _tilesz;
+   bool interp=true;
+
+   void main (void)
+   {
+      vec4 p  = vec4(0.,0.,0.,1.0);
+      vec2 uv = gl_TexCoord[0].xy;
+      vec4 pp = texture2D(src, uv);
+      vec2 q  = vec2(floor(uv.x * _tilesz.x), floor(uv.y * _tilesz.y));
+      float i1 = mod(q.x, 2.0);
+      float i2 = mod(q.y, 2.0);
+
+
+      if(i1==0.0 && i2==0.0) {
+         p.x = pp.x * 1.5;
+         if(interp) {
+         vec2 uv1 = uv + vec2(1.0/_tilesz.x, 1.0 /_tilesz.y);
+         vec2 uv2 = uv + vec2(1.0/_tilesz.x, 0.0 /_tilesz.y);
+         vec2 uv3 = uv + vec2(0.0/_tilesz.x, 1.0 /_tilesz.y);
+         vec4 pp1       = texture2D(src, uv1);
+         vec4 pp2       = texture2D(src, uv2);
+         vec4 pp3       = texture2D(src, uv3);
+         p.z = pp1.x * 2.0;
+         p.y = (pp2.x + pp3.x)/2.0;
+         }
+      } else if(i1!=0.0 && i2!=0.0) {
+         p.z = pp.x * 2.0;
+         if(interp) {
+         vec2 uv1 = uv + vec2(-1.0/_tilesz.x,-1.0 /_tilesz.y);
+         vec2 uv2 = uv + vec2(-1.0/_tilesz.x, 0.0 /_tilesz.y);
+         vec2 uv3 = uv + vec2(0.0/_tilesz.x, -1.0 /_tilesz.y);
+         vec4 pp1       = texture2D(src, uv1);
+         vec4 pp2       = texture2D(src, uv2);
+         vec4 pp3       = texture2D(src, uv3);
+         p.x = pp1.x * 1.5;
+         p.y = (pp2.x + pp3.x)/2.0;
+         }
+      } else if(i1==0.0 && i2!=0.0) {
+         p.y = pp.x;
+         if(interp) {
+         vec2 uv1 = uv + vec2(0.0/_tilesz.x, -1.0 /_tilesz.y);
+         vec2 uv2 = uv + vec2(1.0/_tilesz.x,  0.0 /_tilesz.y);
+         vec4 pp1       = texture2D(src, uv1);
+         vec4 pp2       = texture2D(src, uv2);
+         p.x = pp1.x * 1.5;
+         p.z = pp2.x * 2.0;
+         }
+      } else {
+         p.y = pp.x;
+         if(interp) {
+         vec2 uv1 = uv + vec2(-1.0/_tilesz.x, 0.0 /_tilesz.y);
+         vec2 uv2 = uv + vec2(0.0/_tilesz.x,  1.0 /_tilesz.y);
+         vec4 pp1       = texture2D(src, uv1);
+         vec4 pp2       = texture2D(src, uv2);
+         p.x = pp1.x * 1.5;
+         p.z = pp2.x * 2.0;
+         }
+      }
+
+      p = p * shader_a + shader_b;
+      if (shader_c > 0)
+         p = 1.0 - p;
+      gl_FragColor = clamp(p , 0.0, 1.0);
+      //gl_FragColor = gl_Color*shader_a; // the color of the triangle
+   }
+   """
+
 rgba_shader = """
    uniform sampler2D src;
    uniform float shader_a;
@@ -312,6 +384,7 @@ By[0]= 1.; By[1]= 0.35; By[2]= 0.4 ; By[3]=0.  ; By[4]=0.;   By[5]=0.;   By[6]=0
 
 SHADERS = { 
       'rgba' : rgba_shader,
+      'bayer': bayer_shader,
       'hsv'  : hsv_shader,
       'oflow': oflow_shader,
       'rb'   : rb_shader, 
@@ -864,7 +937,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # reset visualization
     if key==glfw.KEY_1 and action==glfw.PRESS:
-       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 5
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 6
        V.redisp = 1
 
 
@@ -1087,6 +1160,9 @@ def display( window ):
        elif V.TOGGLE_FLOW_COLORS == 4:
           V.inv_param=1
           program  = SHADER_PROGRAMS['rgba']
+       elif V.TOGGLE_FLOW_COLORS == 5:
+          V.inv_param=0
+          program  = SHADER_PROGRAMS['bayer']
        else:
           V.inv_param=0
           program  = SHADER_PROGRAMS['rgba']
@@ -1124,6 +1200,8 @@ def display( window ):
     # DRAW THE IMAGE
     textureID=13
     for tile in D.imageBitmapTiles:
+       _tilesz= glGetUniformLocation(program, "_tilesz")
+       glUniform2f(_tilesz, tile[3], tile[4]);
        drawImage(textureID,tile[3],tile[4],tile[1],tile[2])
        textureID=textureID+1
 
