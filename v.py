@@ -1386,6 +1386,11 @@ def main():
     glfw.window_hint(glfw.FOCUSED,  GL_TRUE);
     glfw.window_hint(glfw.DECORATED,  GL_TRUE);
     window = glfw.create_window(D.w, D.h, "Vflip! (reloaded)", None, None)
+    # the maximum window size is limited to the monitor size
+    monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
+    if(D.w > monsz[0] or D.h > monsz[1]):
+        D.w, D.h = min(D.w, monsz[0]), min(D.h, monsz[1])
+        glfw.set_window_size(window,D.w,D.h)
 
 
     if not glut.INITIALIZED:
