@@ -1389,8 +1389,8 @@ def main():
     # the maximum window size is limited to the monitor size
     monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
     if(D.w > monsz[0] or D.h > monsz[1]):
-        D.w, D.h = min(D.w, monsz[0]), min(D.h, monsz[1])
-        glfw.set_window_size(window,D.w,D.h)
+        V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
+        glfw.set_window_size(window,V.winx,V.winy)
 
 
     if not glut.INITIALIZED:
@@ -1477,13 +1477,13 @@ def main():
            if V.resize and not (D.w,D.h) == glfw.get_framebuffer_size(window) and not V.window_has_been_resized_by_the_user:
               # maximum window size is given by the primary monitor 
               monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
-              D.w, D.h = min(D.w, monsz[0]), min(D.h, monsz[1])
-              #if((D.w,D.h) == monsz):     # may leave window decoration outside screen
+              V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
+              #if((V.winx,V.winy) == monsz):     # may leave window decoration outside screen
               #   glfw.set_window_pos(window,0,0)
 
               # resize the window and check the resulting size (may be smaller)
-              glfw.set_window_size(window,D.w,D.h)
-              D.w, D.h= glfw.get_window_size(window)
+              glfw.set_window_size(window,V.winx,V.winy)
+              V.winx, V.winy= glfw.get_window_size(window)
 
               # I know it's not been the user so I reset the variable to 0
               V.window_has_been_resized_by_the_user=0
