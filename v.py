@@ -155,7 +155,7 @@ bayer_shader = """
       float i2 = mod(q.y, 2.0);
 
 
-      if(i1==0.0 && i2==0.0) {
+      if(i1<0.5 && i2<0.5) {
          p.x = pp.x * 1.5;
          if(interp) {
          vec2 uv1 = uv + vec2(1.0/_tilesz.x, 1.0 /_tilesz.y);
@@ -167,7 +167,7 @@ bayer_shader = """
          p.z = pp1.x * 2.0;
          p.y = (pp2.x + pp3.x)/2.0;
          }
-      } else if(i1!=0.0 && i2!=0.0) {
+      } else if(i1>=0.5 && i2>=0.5) {
          p.z = pp.x * 2.0;
          if(interp) {
          vec2 uv1 = uv + vec2(-1.0/_tilesz.x,-1.0 /_tilesz.y);
@@ -179,7 +179,7 @@ bayer_shader = """
          p.x = pp1.x * 1.5;
          p.y = (pp2.x + pp3.x)/2.0;
          }
-      } else if(i1==0.0 && i2!=0.0) {
+      } else if(i1<0.5 && i2>=0.5) {
          p.y = pp.x;
          if(interp) {
          vec2 uv1 = uv + vec2(0.0/_tilesz.x, -1.0 /_tilesz.y);
