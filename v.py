@@ -1078,8 +1078,13 @@ def display( window ):
     # Query the native frame buffer resolution to honor HDPI monitors
     # https://github.com/adrianbroher/freetype-gl/commit/c8474a9f1723e013219ab871d6f40cf86159fe87
     fb_width,fb_height = glfw.get_framebuffer_size(window)
+    
+    # minimized window in windows 10 has size 0
+    if (fb_width,fb_height, winx, winy) == (0,0,0,0):
+       return
     display_scale = fb_width / winx
     #print(display_scale)
+
 
     glViewport(0, 0, int(winx*display_scale), int(winy*display_scale));
 
@@ -1468,8 +1473,8 @@ def main():
               # maximum window size is given by the primary monitor 
               monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
               D.w, D.h = min(D.w, monsz[0]), min(D.h, monsz[1])
-              if((D.w,D.h) == monsz):
-                 glfw.set_window_pos(window,0,0)
+              #if((D.w,D.h) == monsz):     # may leave window decoration outside screen
+              #   glfw.set_window_pos(window,0,0)
 
               # resize the window and check the resulting size (may be smaller)
               glfw.set_window_size(window,D.w,D.h)
