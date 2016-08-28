@@ -842,9 +842,10 @@ def mouseWheel_callback(window, xoffset, yoffset):
       # scale
       elif V.shift_is_pressed:
          V.radius_update(yoffset*GLOBAL_WHEEL_SCALING)
-      # bias
+      # bias and scale
       else: # nothing pressed
          V.center_update(yoffset*GLOBAL_WHEEL_SCALING)
+         V.radius_update(xoffset*GLOBAL_WHEEL_SCALING)
 
 
 
@@ -892,18 +893,28 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # (SAVE) write current buffer
     if key==glfw.KEY_S and (action==glfw.PRESS or action==glfw.REPEAT): 
-       import numpy as np
        import piio
        from os import path
-       w,h=V.winx,V.winy
+
+       # determine display scale
+       fb_width,fb_height = glfw.get_framebuffer_size(window)
+       display_scale = int(fb_width / V.winx)
+
+       w,h=V.winx*display_scale,V.winy*display_scale
        glReadBuffer( GL_FRONT );
        data = glReadPixels (0,0,w,h, GL_RGB,  GL_UNSIGNED_BYTE)
-       iimage = np.fromstring(data, dtype=np.uint8, count=w*h*3).reshape((h,w,3))
        n=0       # determine next snapshot
        while path.exists('snap%02d.png'%n):
           n = n+1
        print('Saving ' + 'snap%02d.png'%n)
-       piio.write('snap%02d.png'%n, iimage[::-1,:,0:3])
+       # write the buffer
+       piio.write_buffer_uint8('snap%02d.png'%n, data,w,h,3)
+
+       # no need of numpy for the conversion
+       #import numpy as np
+       #iimage = np.fromstring(data, dtype=np.uint8, count=w*h*3).reshape((h,w,3))
+       #piio.write('snap%02d.png'%n, iimage[::-1,:,0:3])
+
        ### from http://nullege.com/codes/show/src@g@l@glumpy-0.2.1@glumpy@figure.py/313/OpenGL.GL.glReadPixels
        #from PIL import Image
        #image = Image.fromstring('RGBA', (w,h), data)

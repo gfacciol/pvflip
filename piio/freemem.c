@@ -35,3 +35,13 @@ void copy_tile(float *src, int nc, int nr, int nch, float *dst, int x0, int y0, 
    }
    }
 }
+
+#define swap_uint8(x,y) {uint8_t t = x; x = y; y = t;}
+// OpenGL screen buffers are bottom-to-top, files are top-to-bottom
+void reverse_vertically_uint8_buffer_inplace(uint8_t *buff, int w, int h, int nch) {
+   for (int j=0;j<h/2;j++)
+   for (int i=0;i<w;i++)
+   for (int c=0;c<nch;c++) {
+      swap_uint8(buff[nch*(i + (h-j-1)*w)+c] ,  buff[nch*(i + j*w)+c]);
+   }
+}

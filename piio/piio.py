@@ -65,29 +65,6 @@ libiio   = ctypes.CDLL(libiiofile)
 del libiiofile, here, lib_ext
 
 
-from numpy import prod,float64,ndarray
-from numpy import dtype as npdtype
-def make_nd_array(c_pointer, shape, dtype=float64, order='C', own_data=True):
-    """
-    replacement for: np.ctypeslib.as_array(x)
-    that doesn't work with python3
-    http://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
-    """
-    arr_size = prod(shape[:]) * npdtype(dtype).itemsize 
-    if sys.version_info.major >= 3:
-        buf_from_mem = ctypes.pythonapi.PyMemoryView_FromMemory
-        buf_from_mem.restype = ctypes.py_object
-        buf_from_mem.argtypes = (ctypes.c_void_p, ctypes.c_int, ctypes.c_int)
-        buffer = buf_from_mem(c_pointer, arr_size, 0x100)
-    else:
-        buf_from_mem = ctypes.pythonapi.PyBuffer_FromMemory
-        buf_from_mem.restype = ctypes.py_object
-        buffer = buf_from_mem(c_pointer, arr_size)
-    arr = ndarray(tuple(shape[:]), dtype, buffer, order=order)
-    if own_data and not arr.flags.owndata:
-        return arr.copy()
-    else:
-        return arr
 
 def read(filename):
    '''
@@ -111,6 +88,32 @@ def read(filename):
    #nasty read data into array using buffer copy
    #http://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
    #http://docs.scipy.org/doc/numpy/reference/generated/numpy.frombuffer.html
+
+   # helper function not so helpful: TO BE REMOVED SOON
+   def make_nd_array(c_pointer, shape, dtype=float64, order='C', own_data=True):
+       """
+       replacement for: np.ctypeslib.as_array(x)
+       that doesn't work with python3
+       http://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
+       """
+       from numpy import prod,float64,ndarray
+       from numpy import dtype as npdtype
+   
+       arr_size = prod(shape[:]) * npdtype(dtype).itemsize 
+       if sys.version_info.major >= 3:
+           buf_from_mem = ctypes.pythonapi.PyMemoryView_FromMemory
+           buf_from_mem.restype = ctypes.py_object
+           buf_from_mem.argtypes = (ctypes.c_void_p, ctypes.c_int, ctypes.c_int)
+           buffer = buf_from_mem(c_pointer, arr_size, 0x100)
+       else:
+           buf_from_mem = ctypes.pythonapi.PyBuffer_FromMemory
+           buf_from_mem.restype = ctypes.py_object
+           buffer = buf_from_mem(c_pointer, arr_size)
+       arr = ndarray(tuple(shape[:]), dtype, buffer, order=order)
+       if own_data and not arr.flags.owndata:
+           return arr.copy()
+       else:
+           return arr
    
    # this numpy array uses the memory provided by the c library, which will be freed
    data_tmp = ctypeslib.as_array( ptr, (h.value,w.value,nch.value) )
@@ -257,6 +260,21 @@ def write(filename,data):
    iiosave.argtypes = [c_char_p, ndpointer(c_float),c_int,c_int,c_int]
    iiosave(str(filename).encode('ascii'), data.astype('float32'), w, h, nch)
 
+
+def write_buffer_uint8(filename,data,w,h,nch):
+   '''
+   IIO: write_buffer_byte(filename,numpyarray,w,h,nch)
+   buffer as exported by opengl
+   '''
+   from ctypes import c_char_p, c_int, c_float
+
+   libiio.reverse_vertically_uint8_buffer_inplace(data,w,h,nch)
+
+   iiosave = libiio.iio_save_image_uint8_vec
+
+   iiosave.restype = None
+   iiosave.argtypes = [c_char_p, c_char_p,c_int,c_int,c_int]
+   iiosave(str(filename).encode('ascii'), data, w, h, nch)
 
 #d = piio.read('testimg.tif')
 #print d.shape

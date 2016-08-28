@@ -3,7 +3,7 @@ Everybody gets credit for their contribution.
 
 * Developers
 Gabriele Facciolo
-Enric Meinhardt (iio library)
+Enric Meinhardt (iio.c library)
 
 * Testing, ideas and suggestions
 Carlo de Franchis
@@ -12,11 +12,12 @@ Rafael Grompone Von Gioi
 
 * Libraries, wrappers, blog posts
 https://github.com/mnhrdt/iio/
-https://github.com/rougier/pyglfw
+https://github.com/FlorianRhiem/pyGLFW
 htte://www.seethroughskin.com/blog/?p=771
 http://python-opengl-examples.blogspot.com.es/
 http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
 http://www.cityinabottle.org/nodebox/shader/
 http://stackoverflow.com/questions/4355524/getting-data-from-ctypes-array-into-numpy
 http://docs.scipy.org/doc/numpy/reference/generated/numpy.frombuffer.html
+https://github.com/rougier/pyglfw (not used anymore)
 http://cimg.sourceforge.net/ (not used anymore)
