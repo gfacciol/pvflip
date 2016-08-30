@@ -32,6 +32,8 @@ if platform.system() == 'Darwin':
 else:
    GLOBAL_WHEEL_SCALING = 1.0
 
+global HELPstr
+HELPstr=""
 
 oflow_shader = """
     vec4 hsvtorgb(vec4 colo)
@@ -770,7 +772,8 @@ def mouseMotion_callback(window, x,y):
     V.mx, V.my = x, y
     V.window = window
 
-    V.redisp = 1
+    # removed because it seems to be useless
+    #V.redisp = 1
 
 
 #    title='p:%s,%s [+%s+%s %sx%s]' % (x+V.dx,y+V.dy,x0+V.dx,y0+V.dy,w0,h0)
@@ -980,7 +983,7 @@ def keyboard_callback(window, key, scancode, action, mods):
     if key==glfw.KEY_MINUS and (action==glfw.PRESS or action==glfw.REPEAT):
        if remove_current_image():
           new_current_image_idx = change_image(current_image_idx)
-          current_image_idx = -1  # force refresh: image index hasn't changed by the image has
+          current_image_idx = -1  #FIXME forced refresh: image index hasn't changed by the image has
           if V.TOGGLE_AUTOMATIC_RANGE: V.reset_scale_bias()
           V.mute_keyboard=1
 
@@ -996,25 +999,30 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # help
     if key==glfw.KEY_H   and action==glfw.PRESS:
-       print("Q     : quit")
-       print("U     : show/hide HUD")
-       print("arrows: pan image")
-       print("P,M   : zoom image in/out")
-       print("Z     : zoom modifier for the mouse wheel")
-       print("F     : fit image to window size")
-       print("C     : reset intensity range")
-       print("shiftC: automatically reset range")
-       print("B     : set range to [0:255]")
-       print("D,E   : range scale up/down")
-       print("R     : reset visualization: zoom,pan,range")
-       print("1     : toggle optic flow coloring")
-       print("S     : capture a snap##.png of the current view")
-       print("-     : drop current file from visualization list")
-       print("mouse wheel: contrast center")
-       print("mouse wheel+shift : contrast scale")
-       print("mouse motion+shift: contrast center")
-       print("space/backspace   : next/prev image")
-       print("drag&drop files   : add to list")
+       global HELPstr
+       HELPstr="==============HELP==============\n" + \
+               "Q     : quit\n" + \
+               "U     : show/hide HUD\n" + \
+               "arrows: pan image\n" + \
+               "P,M   : zoom image in/out\n" + \
+               "F     : fit image to window size\n" + \
+               "C     : reset intensity range\n" + \
+               "shiftC: automatically reset range\n" + \
+               "B     : set range to [0:255]\n" + \
+               "D,E   : range scale up/down\n" + \
+               "R     : reset visualization: zoom,pan,range\n" + \
+               "1     : cycle palette: optic flow,jet,negative...\n" + \
+               "S     : capture a snap##.png of current window\n" + \
+               "-     : remove current file from view list\n" + \
+               "Z     : zoom modifier for the mouse wheel\n" + \
+               "mouse wheel: contrast center\n" + \
+               "mouse wheel+shift : contrast scale\n" + \
+               "mouse motion+shift: contrast center\n" + \
+               "space/backspace   : next/prev image\n" + \
+               "drag&drop files   : add to view list\n" + \
+               "================================\n"
+       print(HELPstr)
+       V.redisp=1
 
     # exit
     if (key==glfw.KEY_Q  or key==glfw.KEY_ESCAPE ) and action ==glfw.PRESS:
@@ -1131,7 +1139,7 @@ def display( window ):
        glPopMatrix()
 
 
-    def drawHud(str,color=(0,1,0)):
+    def drawHud(str,color=(0,1,0),pos=(8,13)):
        #import OpenGL.GLUT as glut
        #  A pointer to a font style..
        #  Fonts supported by GLUT are: GLUT_BITMAP_8_BY_13,
@@ -1143,11 +1151,11 @@ def display( window ):
           font_style = glut.GLUT_BITMAP_HELVETICA_18
        glColor3f(color[0], color[1], color[2]);
        line=0;
-       glRasterPos3f (8, 13+13*line,.5)
+       glRasterPos3f (pos[0], pos[1]+13*line,.5)
        for i in str:
           if  i=='\n':
              line=line+1
-             glRasterPos3f (8, 13+13*line,.5)
+             glRasterPos3f (pos[0], pos[1]+13*line,.5)
           else:
              glut.glutBitmapCharacter(font_style, ord(i))
     
@@ -1229,6 +1237,11 @@ def display( window ):
        a=D.v_max-D.v_min
        b=D.v_min
        drawHud('%s\n%s\n%s\n%.3f %.3f\n%.3f %.3f'%(D.filename, V.txt_pos,V.txt_val,V.v_center,V.v_radius,D.v_min,D.v_max))
+
+    global HELPstr
+    if HELPstr != "":
+       drawHud(HELPstr, (0,1,0), (120, 40))
+       HELPstr=""
 
 
     # show RECTANGULAR region

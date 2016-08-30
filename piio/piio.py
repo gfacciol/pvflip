@@ -211,7 +211,7 @@ def read_tiled_buffers(filename):
 
 def minmax(data):
    '''
-   IIO: write(filename,numpyarray)
+   : minmax(data)
    '''
    from ctypes import c_int, c_float, POINTER, cast, byref, c_void_p
 
@@ -263,7 +263,7 @@ def write(filename,data):
 
 def write_buffer_uint8(filename,data,w,h,nch):
    '''
-   IIO: write_buffer_byte(filename,numpyarray,w,h,nch)
+   IIO: write_buffer_byte(filename,data,w,h,nch)
    buffer as exported by opengl
    '''
    from ctypes import c_char_p, c_int, c_float
