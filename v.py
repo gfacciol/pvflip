@@ -772,8 +772,8 @@ def mouseMotion_callback(window, x,y):
     V.mx, V.my = x, y
     V.window = window
 
-    # removed because it seems to be useless
-    #V.redisp = 1
+    # this is seems to be needed by the non-composed window managers
+    V.redisp = 1
 
 
 #    title='p:%s,%s [+%s+%s %sx%s]' % (x+V.dx,y+V.dy,x0+V.dx,y0+V.dy,w0,h0)
