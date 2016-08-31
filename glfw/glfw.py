@@ -183,7 +183,7 @@ else:   # not Windows -> Linux or Mac
                        '/usr/lib/x86_64-linux-gnu/'], _glfw_get_version)
     if _glfw == None:
         print('BUILDING GLFW...')
-        os.system('mkdir -p %s/build; cd %s/build; cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw.{so,dylib} %s '%(here,here, here))
+        os.system('mkdir -p %s/build; cd %s/build; cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw.so src/libglfw.dyld %s '%(here,here, here))
         try:
            _glfw = _load_library(['glfw', 'glfw3'], ['.so', '.dylib'],
                           ['', here,], _glfw_get_version)

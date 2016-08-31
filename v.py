@@ -22,7 +22,7 @@ from OpenGL.GL import *
 from OpenGL.GL.shaders import *
 # TODO REMOVE : needed for the text
 import OpenGL.GLUT as glut
-import glfw
+from glfw import glfw
 import sys
 
 ### SYSTEM SPECIFIC STUFF
