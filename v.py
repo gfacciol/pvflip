@@ -417,7 +417,7 @@ class ViewportState:
    dragdx,dragdy=0,0
    dragx0,dragy0=0,0
 
-   # Window
+   # Window TODO: Needed?
    window = None
 
    # mouse state variables
@@ -624,8 +624,9 @@ def load_image(imagename):
 #      v_min,v_max = piio.minmax(im)
 #      print max(map(lambda x: float('nan') if math.isinf(x) else  x , im))
       return tiles,w,h,nch,vmin,vmax
-   except SystemError:
-      print('error reading the image')
+   except (SystemError, IOError) as e:
+      print('error reading the image: %s'%e)
+      raise IOError
 
 
 def insert_images(filenames):
@@ -686,17 +687,26 @@ def change_image(new_idx):
 
    # the image seems to be there
    if new_idx not in DD:
-      D = DD[new_idx] = ImageState()
+      # load_image may trow an exception if the file is not readable.
+      try:
+         T = DD[new_idx] = ImageState()
 
-      tic()
-      # read the image
-      D.filename = new_filename
-      if new_filename != '-':
-         D.mtime    = (stat(new_filename).st_mtime)
-      D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
-      V.data_min, V.data_max =  D.v_min,D.v_max 
-      setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
-      toc('loadImage+data->RGBbitmap+texture setup')
+         tic()
+         # read the image
+         T.filename = new_filename
+         if new_filename != '-':
+            T.mtime    = (stat(new_filename).st_mtime)
+         T.imageBitmapTiles,T.w,T.h,T.nch,T.v_min,T.v_max = load_image(new_filename)
+         setupTexturesFromImageTiles(T.imageBitmapTiles,T.w,T.h,T.nch)
+         V.data_min, V.data_max =  T.v_min,T.v_max
+         toc('loadImage+data->RGBbitmap+texture setup')
+
+         D = T     # everything is ok, update the corrent image data
+      except IOError:
+         DD.pop(new_idx)
+         print(new_filename + '. Skipping...')
+         sys.argv.pop(new_idx+1)
+         return new_idx_bak
 
       # tidy up memory 
       if NUM_FILES > BUFF*2:
@@ -716,10 +726,6 @@ def change_image(new_idx):
       #toc('texture setup')
 
    print (new_idx,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
-
-   # Call the mouseMotion callback in order to update the display info
-   if V.window is not None:
-       mouseMotion_callback(V.window, V.mx, V.my)
 
    return new_idx
 
@@ -770,7 +776,6 @@ def mouseMotion_callback(window, x,y):
 
     # Update viewport mouse position
     V.mx, V.my = x, y
-    V.window = window
 
     # this is seems to be needed by the non-composed window managers
     V.redisp = 1
@@ -1032,7 +1037,9 @@ def keyboard_callback(window, key, scancode, action, mods):
        print(x0,y0,w0,h0)
        sys.exit(0)
 
-
+    if V.redisp == 1:
+       # Call the mouseMotion callback in order to update the display info
+       mouseMotion_callback(window, V.mx, V.my)
 
 
 
@@ -1379,13 +1386,13 @@ def main():
     tic()
     # read the image
     # Usually this is done with change_image, but this is a special case
-    # as we must find out the image size before creating the window 
+    # as we must find out the image size before creating the window
     D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
     D.filename = I1
     from os import stat, path
     if I1 != '-' and path.exists(I1):
       D.mtime    = (stat(I1).st_mtime)
-    V.data_min, V.data_max=  D.v_min,D.v_max 
+    V.data_min, V.data_max=  D.v_min,D.v_max
     V.reset_scale_bias()
     toc('loadImage+data->RGBbitmap')
 
