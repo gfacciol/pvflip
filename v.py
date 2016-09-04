@@ -1384,27 +1384,6 @@ def main():
 
 
     tic()
-    # read the image
-    # Usually this is done with change_image, but this is a special case
-    # as we must find out the image size before creating the window
-    D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
-    D.filename = I1
-    from os import stat, path
-    if I1 != '-' and path.exists(I1):
-      D.mtime    = (stat(I1).st_mtime)
-    V.data_min, V.data_max=  D.v_min,D.v_max
-    V.reset_scale_bias()
-    toc('loadImage+data->RGBbitmap')
-
-    
-    ## image list
-    current_image_idx = 0
-    DD[current_image_idx] = D
-
-
-
-
-    tic()
     # Initialize the library
     # for some reason glfwInit changes the current dir, so I change it back!
     from os import getcwd,chdir
@@ -1413,20 +1392,11 @@ def main():
         sys.exit(1)
     chdir(savepath)
 
-    # Create a windowed mode window and its OpenGL context
+    # Create a windowed mode window (hidden) and its OpenGL context
     glfw.window_hint(glfw.FOCUSED,  GL_TRUE);
     glfw.window_hint(glfw.DECORATED,  GL_TRUE);
-    window = glfw.create_window(D.w, D.h, "Vflip! (reloaded)", None, None)
-    # the maximum window size is limited to the monitor size
-    monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
-    if(D.w > monsz[0] or D.h > monsz[1]):
-        V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
-        glfw.set_window_size(window,V.winx,V.winy)
-
-
-    if not glut.INITIALIZED:
-        glut.glutInit([])
-
+    glfw.window_hint(glfw.VISIBLE,  GL_FALSE);
+    window = glfw.create_window(100, 100, "Vflip! (reloaded)", None, None)
 
     if not window:
         glfw.terminate()
@@ -1446,14 +1416,28 @@ def main():
 #    glfw.set_char_callback (window, unicode_char_callback)
     toc('glfw init')
 
+    if not glut.INITIALIZED:
+        glut.glutInit([])
 
-    # setup texture 
+
     tic()
-    setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
-    glFinish()  # Flush and wait
-    toc('texture setup')
+    # read the image: this affects the global variables DD, D, and V
+    current_image_idx = change_image(0)
+    V.reset_scale_bias()
+    toc('loadImage+data->RGBbitmap')
 
-    print (0,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
+    # resize the window 
+    glfw.set_window_size(window, D.w,D.h)
+
+    # the maximum window size is limited to the monitor size
+    monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
+    if(D.w > monsz[0] or D.h > monsz[1]):
+        V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
+        glfw.set_window_size(window,V.winx,V.winy)
+
+    # show the window
+    glfw.show_window (window)
+
 
 
 ##########
