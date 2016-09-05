@@ -417,7 +417,7 @@ class ViewportState:
    dragdx,dragdy=0,0
    dragx0,dragy0=0,0
 
-   # Window
+   # Window TODO: Needed?
    window = None
 
    # mouse state variables
@@ -624,8 +624,9 @@ def load_image(imagename):
 #      v_min,v_max = piio.minmax(im)
 #      print max(map(lambda x: float('nan') if math.isinf(x) else  x , im))
       return tiles,w,h,nch,vmin,vmax
-   except SystemError:
-      print('error reading the image')
+   except (SystemError, IOError) as e:
+      print('error reading the image: %s'%e)
+      raise IOError
 
 
 def insert_images(filenames):
@@ -686,17 +687,26 @@ def change_image(new_idx):
 
    # the image seems to be there
    if new_idx not in DD:
-      D = DD[new_idx] = ImageState()
+      # load_image may trow an exception if the file is not readable.
+      try:
+         T = DD[new_idx] = ImageState()
 
-      tic()
-      # read the image
-      D.filename = new_filename
-      if new_filename != '-':
-         D.mtime    = (stat(new_filename).st_mtime)
-      D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(new_filename)
-      V.data_min, V.data_max =  D.v_min,D.v_max 
-      setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
-      toc('loadImage+data->RGBbitmap+texture setup')
+         tic()
+         # read the image
+         T.filename = new_filename
+         if new_filename != '-':
+            T.mtime    = (stat(new_filename).st_mtime)
+         T.imageBitmapTiles,T.w,T.h,T.nch,T.v_min,T.v_max = load_image(new_filename)
+         setupTexturesFromImageTiles(T.imageBitmapTiles,T.w,T.h,T.nch)
+         V.data_min, V.data_max =  T.v_min,T.v_max
+         toc('loadImage+data->RGBbitmap+texture setup')
+
+         D = T     # everything is ok, update the corrent image data
+      except IOError:
+         DD.pop(new_idx)
+         print(new_filename + '. Skipping...')
+         sys.argv.pop(new_idx+1)
+         return new_idx_bak
 
       # tidy up memory 
       if NUM_FILES > BUFF*2:
@@ -716,10 +726,6 @@ def change_image(new_idx):
       #toc('texture setup')
 
    print (new_idx,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
-
-   # Call the mouseMotion callback in order to update the display info
-   if V.window is not None:
-       mouseMotion_callback(V.window, V.mx, V.my)
 
    return new_idx
 
@@ -770,10 +776,9 @@ def mouseMotion_callback(window, x,y):
 
     # Update viewport mouse position
     V.mx, V.my = x, y
-    V.window = window
 
-    # removed because it seems to be useless
-    #V.redisp = 1
+    # this is seems to be needed by the non-composed window managers
+    V.redisp = 1
 
 
 #    title='p:%s,%s [+%s+%s %sx%s]' % (x+V.dx,y+V.dy,x0+V.dx,y0+V.dy,w0,h0)
@@ -1032,7 +1037,9 @@ def keyboard_callback(window, key, scancode, action, mods):
        print(x0,y0,w0,h0)
        sys.exit(0)
 
-
+    if V.redisp == 1:
+       # Call the mouseMotion callback in order to update the display info
+       mouseMotion_callback(window, V.mx, V.my)
 
 
 
@@ -1377,27 +1384,6 @@ def main():
 
 
     tic()
-    # read the image
-    # Usually this is done with change_image, but this is a special case
-    # as we must find out the image size before creating the window 
-    D.imageBitmapTiles,D.w,D.h,D.nch,D.v_min,D.v_max = load_image(I1)
-    D.filename = I1
-    from os import stat, path
-    if I1 != '-' and path.exists(I1):
-      D.mtime    = (stat(I1).st_mtime)
-    V.data_min, V.data_max=  D.v_min,D.v_max 
-    V.reset_scale_bias()
-    toc('loadImage+data->RGBbitmap')
-
-    
-    ## image list
-    current_image_idx = 0
-    DD[current_image_idx] = D
-
-
-
-
-    tic()
     # Initialize the library
     # for some reason glfwInit changes the current dir, so I change it back!
     from os import getcwd,chdir
@@ -1406,20 +1392,11 @@ def main():
         sys.exit(1)
     chdir(savepath)
 
-    # Create a windowed mode window and its OpenGL context
+    # Create a windowed mode window (hidden) and its OpenGL context
     glfw.window_hint(glfw.FOCUSED,  GL_TRUE);
     glfw.window_hint(glfw.DECORATED,  GL_TRUE);
-    window = glfw.create_window(D.w, D.h, "Vflip! (reloaded)", None, None)
-    # the maximum window size is limited to the monitor size
-    monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
-    if(D.w > monsz[0] or D.h > monsz[1]):
-        V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
-        glfw.set_window_size(window,V.winx,V.winy)
-
-
-    if not glut.INITIALIZED:
-        glut.glutInit([])
-
+    glfw.window_hint(glfw.VISIBLE,  GL_FALSE);
+    window = glfw.create_window(100, 100, "Vflip! (reloaded)", None, None)
 
     if not window:
         glfw.terminate()
@@ -1439,14 +1416,28 @@ def main():
 #    glfw.set_char_callback (window, unicode_char_callback)
     toc('glfw init')
 
+    if not glut.INITIALIZED:
+        glut.glutInit([])
 
-    # setup texture 
+
     tic()
-    setupTexturesFromImageTiles(D.imageBitmapTiles,D.w,D.h,D.nch)
-    glFinish()  # Flush and wait
-    toc('texture setup')
+    # read the image: this affects the global variables DD, D, and V
+    current_image_idx = change_image(0)
+    V.reset_scale_bias()
+    toc('loadImage+data->RGBbitmap')
 
-    print (0,D.filename, (D.w,D.h,D.nch), (D.v_min,D.v_max))
+    # resize the window 
+    glfw.set_window_size(window, D.w,D.h)
+
+    # the maximum window size is limited to the monitor size
+    monsz = glfw.get_video_mode(glfw.get_primary_monitor())[0];
+    if(D.w > monsz[0] or D.h > monsz[1]):
+        V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
+        glfw.set_window_size(window,V.winx,V.winy)
+
+    # show the window
+    glfw.show_window (window)
+
 
 
 ##########

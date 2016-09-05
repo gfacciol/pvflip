@@ -81,6 +81,8 @@ def read(filename):
    
    iioread.restype = c_void_p  # it's like this
    tptr = iioread(str(filename).encode('ascii'),byref(w),byref(h),byref(nch))
+   if (tptr == None):
+      raise IOError('PIIO: the file %s cannot be read'%(filename))
    c_float_p = POINTER(c_float)       # define a new type of pointer
    ptr = cast(tptr, c_float_p)
    #print w,h,nch
@@ -142,6 +144,8 @@ def read_buffer(filename):
    
    iioread.restype = c_void_p  # it's like this
    tptr = iioread(str(filename).encode('ascii'),byref(w),byref(h),byref(nch))
+   if (tptr == None):
+      raise IOError('PIIO: the file %s cannot be read'%(filename))
    c_float_p = POINTER(c_float)       # define a new type of pointer
    ptr = cast(tptr, c_float_p)
    #print w,h,nch
@@ -173,6 +177,8 @@ def read_tiled_buffers(filename):
    
    libiio.iio_read_image_float_vec.restype = c_void_p  # it's like this
    tptr = libiio.iio_read_image_float_vec(str(filename).encode('ascii'),byref(w),byref(h),byref(nch))
+   if (tptr == None):
+      raise IOError('PIIO: the file %s cannot be read'%(filename))
    c_float_p = POINTER(c_float)       # define a new type of pointer
    ptr = cast(tptr, c_float_p)
    #print w,h,nch
