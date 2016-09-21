@@ -1231,7 +1231,7 @@ def display( window ):
     # DRAW THE IMAGE
     textureID=13
     for tile in D.imageBitmapTiles:
-       _tilesz= glGetUniformLocation(program, "_tilesz")
+       _tilesz= glGetUniformLocation(program, b"_tilesz")
        glUniform2f(_tilesz, tile[3], tile[4]);
        drawImage(textureID,tile[3],tile[4],tile[1],tile[2])
        textureID=textureID+1
