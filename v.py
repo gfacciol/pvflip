@@ -1214,18 +1214,18 @@ def display( window ):
 
     glUseProgram(program)   
     # set the values of the shader uniform variables (global)
-    shader_a= glGetUniformLocation(program, "shader_a")
+    shader_a= glGetUniformLocation(program, b"shader_a")
     glUniform1f(shader_a,V.scale_param)
-    shader_b= glGetUniformLocation(program, "shader_b")
+    shader_b= glGetUniformLocation(program, b"shader_b")
     glUniform1f(shader_b,V.bias_param)
-    shader_c= glGetUniformLocation(program, "shader_c")
+    shader_c= glGetUniformLocation(program, b"shader_c")
     glUniform1i(shader_c,V.inv_param)
 
-    shader_B0 = glGetUniformLocation(program, "shader_B0")
+    shader_B0 = glGetUniformLocation(program, b"shader_B0")
     glUniform1f(shader_B0, V.bias_vector[0])
-    shader_B1 = glGetUniformLocation(program, "shader_B1")
+    shader_B1 = glGetUniformLocation(program, b"shader_B1")
     glUniform1f(shader_B1, V.bias_vector[1])
-    shader_B2 = glGetUniformLocation(program, "shader_B2")
+    shader_B2 = glGetUniformLocation(program, b"shader_B2")
     glUniform1f(shader_B2, V.bias_vector[2])
 
     # DRAW THE IMAGE
@@ -1467,11 +1467,11 @@ def main():
        print(glGetProgramInfoLog(program))
        raise
     # set the values of the shader uniform variables (global)
-    shader_a= glGetUniformLocation(program, "shader_a")
+    shader_a= glGetUniformLocation(program, b"shader_a")
     glUniform1f(shader_a,V.scale_param)
-    shader_b= glGetUniformLocation(program, "shader_b")
+    shader_b= glGetUniformLocation(program, b"shader_b")
     glUniform1f(shader_b,V.bias_param)
-    shader_c= glGetUniformLocation(program, "shader_c")
+    shader_c= glGetUniformLocation(program, b"shader_c")
     glUniform1i(shader_c,V.inv_param)
 
 
