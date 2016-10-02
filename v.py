@@ -676,6 +676,9 @@ def change_image(new_idx):
    if new_filename != '-' and not path.exists(new_filename):
       print(new_filename + ' doesn\'t exist. Skipping...')
       sys.argv.pop(new_idx+1)
+      if len(sys.argv) == 1: 
+         print('self destruct!\n')
+         sys.exit(0)
       return new_idx_bak
 
    # check if the file was already read before
@@ -777,7 +780,7 @@ def mouseMotion_callback(window, x,y):
     # Update viewport mouse position
     V.mx, V.my = x, y
 
-    # this is seems to be needed by the non-composed window managers
+    # this seems to be needed by the non-composed window managers
     V.redisp = 1
 
 
