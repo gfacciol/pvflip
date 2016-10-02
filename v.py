@@ -865,7 +865,12 @@ def keyboard_callback(window, key, scancode, action, mods):
     if V.mute_keyboard: # only mute the spacebar event
        return
 
-    #print(key)
+    key_name = glfw.get_key_name(key, 0);
+    # this the actual letter independently of the keyboard
+    if 'A' <= key_name and key_name <= 'z':
+       # replace the pressed key
+       key_name = key_name.upper()
+       key = glfw.__dict__['KEY_%s'%key_name]
 
     # navigate
     winx, winy= glfw.get_framebuffer_size(window)
@@ -1434,6 +1439,9 @@ def main():
     if(D.w > monsz[0] or D.h > monsz[1]):
         V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
         glfw.set_window_size(window,V.winx,V.winy)
+
+    # reset this variable to 0
+    V.window_has_been_resized_by_the_user=0
 
     # show the window
     glfw.show_window (window)
