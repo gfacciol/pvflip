@@ -672,34 +672,27 @@ def change_image(new_idx):
    new_filename = sys.argv[new_idx+1]
 
    from os import stat, path
-   # chech if the file exist
-   if new_filename != '-' and not path.exists(new_filename):
-      print(new_filename + ' doesn\'t exist. Skipping...')
-      sys.argv.pop(new_idx+1)
-      if len(sys.argv) == 1: 
-         print('self destruct!\n')
-         sys.exit(0)
-      return new_idx_bak
-
    # check if the file was already read before
    if new_idx in DD:
-      if new_filename != '-' and not new_filename.startswith('/dev/') and \
+      if new_filename != '-' and not new_filename.startswith('/dev/') and DD[new_idx].mtime != -1 and \
         (DD[new_idx].mtime < stat(new_filename).st_mtime or DD[new_idx].filename != new_filename):
          print(new_filename + ' has changed. Reloading...')
          DD.pop(new_idx)
 
    # the image seems to be there
    if new_idx not in DD:
-      # load_image may trow an exception if the file is not readable.
+      # load_image may trow an exception if the file is not readable or it doesn't exist
       try:
          T = DD[new_idx] = ImageState()
 
          tic()
          # read the image
-         T.filename = new_filename
-         if new_filename != '-':
-            T.mtime    = (stat(new_filename).st_mtime)
          T.imageBitmapTiles,T.w,T.h,T.nch,T.v_min,T.v_max = load_image(new_filename)
+         T.filename = new_filename
+         try:   # if mtime cannot be read, then set it to -1
+            T.mtime = (stat(new_filename).st_mtime)
+         except OSError:
+            T.mtime = -1
          setupTexturesFromImageTiles(T.imageBitmapTiles,T.w,T.h,T.nch)
          V.data_min, V.data_max =  T.v_min,T.v_max
          toc('loadImage+data->RGBbitmap+texture setup')
@@ -709,6 +702,9 @@ def change_image(new_idx):
          DD.pop(new_idx)
          print(new_filename + '. Skipping...')
          sys.argv.pop(new_idx+1)
+         if len(sys.argv) == 1: 
+            print('self destruct!\n')
+            sys.exit(0)
          return new_idx_bak
 
       # tidy up memory 
