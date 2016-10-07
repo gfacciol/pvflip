@@ -672,31 +672,27 @@ def change_image(new_idx):
    new_filename = sys.argv[new_idx+1]
 
    from os import stat, path
-   # chech if the file exist
-   if new_filename != '-' and not path.exists(new_filename):
-      print(new_filename + ' doesn\'t exist. Skipping...')
-      sys.argv.pop(new_idx+1)
-      return new_idx_bak
-
    # check if the file was already read before
    if new_idx in DD:
-      if new_filename != '-' and not new_filename.startswith('/dev/') and \
+      if new_filename != '-' and not new_filename.startswith('/dev/') and DD[new_idx].mtime != -1 and \
         (DD[new_idx].mtime < stat(new_filename).st_mtime or DD[new_idx].filename != new_filename):
          print(new_filename + ' has changed. Reloading...')
          DD.pop(new_idx)
 
    # the image seems to be there
    if new_idx not in DD:
-      # load_image may trow an exception if the file is not readable.
+      # load_image may trow an exception if the file is not readable or it doesn't exist
       try:
          T = DD[new_idx] = ImageState()
 
          tic()
          # read the image
-         T.filename = new_filename
-         if new_filename != '-':
-            T.mtime    = (stat(new_filename).st_mtime)
          T.imageBitmapTiles,T.w,T.h,T.nch,T.v_min,T.v_max = load_image(new_filename)
+         T.filename = new_filename
+         try:   # if mtime cannot be read, then set it to -1
+            T.mtime = (stat(new_filename).st_mtime)
+         except OSError:
+            T.mtime = -1
          setupTexturesFromImageTiles(T.imageBitmapTiles,T.w,T.h,T.nch)
          V.data_min, V.data_max =  T.v_min,T.v_max
          toc('loadImage+data->RGBbitmap+texture setup')
@@ -706,6 +702,9 @@ def change_image(new_idx):
          DD.pop(new_idx)
          print(new_filename + '. Skipping...')
          sys.argv.pop(new_idx+1)
+         if len(sys.argv) == 1: 
+            print('self destruct!\n')
+            sys.exit(0)
          return new_idx_bak
 
       # tidy up memory 
@@ -777,7 +776,7 @@ def mouseMotion_callback(window, x,y):
     # Update viewport mouse position
     V.mx, V.my = x, y
 
-    # this is seems to be needed by the non-composed window managers
+    # this seems to be needed by the non-composed window managers
     V.redisp = 1
 
 
@@ -865,7 +864,12 @@ def keyboard_callback(window, key, scancode, action, mods):
     if V.mute_keyboard: # only mute the spacebar event
        return
 
-    #print(key)
+    key_name = glfw.get_key_name(key, 0);
+    # this the actual letter independently of the keyboard
+    if 'A' <= key_name and key_name <= 'z':
+       # replace the pressed key
+       key_name = key_name.upper()
+       key = glfw.__dict__['KEY_%s'%key_name]
 
     # navigate
     winx, winy= glfw.get_framebuffer_size(window)
@@ -1434,6 +1438,9 @@ def main():
     if(D.w > monsz[0] or D.h > monsz[1]):
         V.winx, V.winy = min(D.w, monsz[0]), min(D.h, monsz[1])
         glfw.set_window_size(window,V.winx,V.winy)
+
+    # reset this variable to 0
+    V.window_has_been_resized_by_the_user=0
 
     # show the window
     glfw.show_window (window)
