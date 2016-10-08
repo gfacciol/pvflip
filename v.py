@@ -1390,11 +1390,8 @@ def main():
     tic()
     # Initialize the library
     # for some reason glfwInit changes the current dir, so I change it back!
-    from os import getcwd,chdir
-    savepath = getcwd()
     if not glfw.init():
         sys.exit(1)
-    chdir(savepath)
 
     # Create a windowed mode window (hidden) and its OpenGL context
     glfw.window_hint(glfw.FOCUSED,  GL_TRUE);
@@ -1419,16 +1416,15 @@ def main():
     glfw.set_window_refresh_callback(window,display)
 #    glfw.set_char_callback (window, unicode_char_callback)
     toc('glfw init')
+    tic()
 
     if not glut.INITIALIZED:
         glut.glutInit([])
 
 
-    tic()
     # read the image: this affects the global variables DD, D, and V
     current_image_idx = change_image(0)
     V.reset_scale_bias()
-    toc('loadImage+data->RGBbitmap')
 
     # resize the window 
     glfw.set_window_size(window, D.w,D.h)
@@ -1481,12 +1477,12 @@ def main():
     shader_c= glGetUniformLocation(program, b"shader_c")
     glUniform1i(shader_c,V.inv_param)
 
-
-
-
 #    # first display
 #    display(window)
-##    glFlush()
+#    glFlush()
+
+    toc('loadImage+data->RGBbitmap')
+
 
     # Loop until the user closes the window
     while not glfw.window_should_close(window):
