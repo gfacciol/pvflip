@@ -1024,6 +1024,8 @@ def keyboard_callback(window, key, scancode, action, mods):
                "S     : capture a snap##.png of current window\n" + \
                "-     : remove current file from view list\n" + \
                "Z     : zoom modifier for the mouse wheel\n" + \
+               "L     : show view list\n" + \
+               "H     : this help message\n" + \
                "mouse wheel: contrast center\n" + \
                "mouse wheel+shift : contrast scale\n" + \
                "mouse motion+shift: contrast center\n" + \
@@ -1031,6 +1033,16 @@ def keyboard_callback(window, key, scancode, action, mods):
                "drag&drop files   : add to view list\n" + \
                "================================\n"
        print(HELPstr)
+       V.redisp=1
+
+    # help
+    if key==glfw.KEY_L   and action==glfw.PRESS:
+       HELPstr="==============FILES=============\n" 
+       for s in range(1,len(sys.argv)):
+          if s == current_image_idx+1:
+             HELPstr = HELPstr + ">   %s\n"%sys.argv[s]
+          else:
+             HELPstr = HELPstr + "    %s\n"%sys.argv[s]
        V.redisp=1
 
     # exit
@@ -1251,7 +1263,7 @@ def display( window ):
 
     global HELPstr
     if HELPstr != "":
-       drawHud(HELPstr, (0,1,0), (120, 40))
+       drawHud(HELPstr, (0,1,0), (10, 80))
        HELPstr=""
 
 
