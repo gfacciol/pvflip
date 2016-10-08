@@ -20,7 +20,7 @@ from __future__ import unicode_literals
 
 from OpenGL.GL import *
 from OpenGL.GL.shaders import *
-# TODO REMOVE : needed for the text
+# TODO REMOVE GLUT: only needed for the text
 import OpenGL.GLUT as glut
 from glfw import glfw
 import sys
@@ -1389,7 +1389,6 @@ def main():
 
     tic()
     # Initialize the library
-    # for some reason glfwInit changes the current dir, so I change it back!
     if not glfw.init():
         sys.exit(1)
 
@@ -1415,12 +1414,12 @@ def main():
     glfw.set_framebuffer_size_callback(window, resize_callback)
     glfw.set_window_refresh_callback(window,display)
 #    glfw.set_char_callback (window, unicode_char_callback)
-    toc('glfw init')
-    tic()
 
     if not glut.INITIALIZED:
         glut.glutInit([])
 
+    toc('glfw init')
+    tic()
 
     # read the image: this affects the global variables DD, D, and V
     current_image_idx = change_image(0)
