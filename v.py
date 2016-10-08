@@ -20,7 +20,7 @@ from __future__ import unicode_literals
 
 from OpenGL.GL import *
 from OpenGL.GL.shaders import *
-# TODO REMOVE : needed for the text
+# TODO REMOVE GLUT: only needed for the text
 import OpenGL.GLUT as glut
 from glfw import glfw
 import sys
@@ -866,7 +866,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     key_name = glfw.get_key_name(key, 0);
     # this the actual letter independently of the keyboard
-    if 'A' <= key_name and key_name <= 'z':
+    if type(key_name)!='NoneType' and 'A' <= key_name and key_name <= 'z':
        # replace the pressed key
        key_name = key_name.upper()
        key = glfw.__dict__['KEY_%s'%key_name]
@@ -1024,6 +1024,8 @@ def keyboard_callback(window, key, scancode, action, mods):
                "S     : capture a snap##.png of current window\n" + \
                "-     : remove current file from view list\n" + \
                "Z     : zoom modifier for the mouse wheel\n" + \
+               "L     : show view list\n" + \
+               "H     : this help message\n" + \
                "mouse wheel: contrast center\n" + \
                "mouse wheel+shift : contrast scale\n" + \
                "mouse motion+shift: contrast center\n" + \
@@ -1031,6 +1033,16 @@ def keyboard_callback(window, key, scancode, action, mods):
                "drag&drop files   : add to view list\n" + \
                "================================\n"
        print(HELPstr)
+       V.redisp=1
+
+    # help
+    if key==glfw.KEY_L   and action==glfw.PRESS:
+       HELPstr="==============FILES=============\n" 
+       for s in range(1,len(sys.argv)):
+          if s == current_image_idx+1:
+             HELPstr = HELPstr + ">   %s\n"%sys.argv[s]
+          else:
+             HELPstr = HELPstr + "    %s\n"%sys.argv[s]
        V.redisp=1
 
     # exit
@@ -1251,7 +1263,7 @@ def display( window ):
 
     global HELPstr
     if HELPstr != "":
-       drawHud(HELPstr, (0,1,0), (120, 40))
+       drawHud(HELPstr, (0,1,0), (10, 80))
        HELPstr=""
 
 
@@ -1389,12 +1401,8 @@ def main():
 
     tic()
     # Initialize the library
-    # for some reason glfwInit changes the current dir, so I change it back!
-    from os import getcwd,chdir
-    savepath = getcwd()
     if not glfw.init():
         sys.exit(1)
-    chdir(savepath)
 
     # Create a windowed mode window (hidden) and its OpenGL context
     glfw.window_hint(glfw.FOCUSED,  GL_TRUE);
@@ -1418,17 +1426,16 @@ def main():
     glfw.set_framebuffer_size_callback(window, resize_callback)
     glfw.set_window_refresh_callback(window,display)
 #    glfw.set_char_callback (window, unicode_char_callback)
-    toc('glfw init')
 
     if not glut.INITIALIZED:
         glut.glutInit([])
 
-
+    toc('glfw init')
     tic()
+
     # read the image: this affects the global variables DD, D, and V
     current_image_idx = change_image(0)
     V.reset_scale_bias()
-    toc('loadImage+data->RGBbitmap')
 
     # resize the window 
     glfw.set_window_size(window, D.w,D.h)
@@ -1481,12 +1488,12 @@ def main():
     shader_c= glGetUniformLocation(program, b"shader_c")
     glUniform1i(shader_c,V.inv_param)
 
-
-
-
 #    # first display
 #    display(window)
-##    glFlush()
+#    glFlush()
+
+    toc('loadImage+data->RGBbitmap')
+
 
     # Loop until the user closes the window
     while not glfw.window_should_close(window):
