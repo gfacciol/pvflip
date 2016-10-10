@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
@@ -866,7 +866,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     key_name = glfw.get_key_name(key, 0);
     # this the actual letter independently of the keyboard
-    if key_name and 'A' <= key_name and key_name <= 'z':
+    if type(key_name)!=type(None) and 'A' <= key_name and key_name <= 'z':
        # replace the pressed key
        key_name = key_name.upper()
        key = glfw.__dict__['KEY_%s'%key_name]
