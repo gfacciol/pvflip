@@ -155,35 +155,46 @@ def _glfw_get_version(filename):
 
 here = os.path.dirname(__file__)
 if sys.platform.startswith('win'):
-    # try the procompiled files
+    # try the procompiled winXX libraries
     try:
         if platform.architecture()[0] == '64bit':
             _glfw = ctypes.CDLL(os.path.join(here,'glfw-3.2.1.bin.WIN64/lib-mingw-w64/glfw3.dll'))
         else:
             _glfw = ctypes.CDLL(os.path.join(here,'glfw-3.2.1.bin.WIN32/lib-mingw/glfw3.dll'))
     except OSError:
-        # only try glfw3.dll on windows
+        # try glfw3.dll on windows system
         try:
             _glfw = ctypes.CDLL('glfw3.dll')
         except OSError:
             _glfw = None
-#if sys.platform == 'win32':
-#    # only try glfw3.dll on windows
-#    try:
-#        _glfw = ctypes.CDLL('glfw3.dll')
-#    except OSError:
-#        _glfw = None
 else:   # not Windows -> Linux or Mac
-    _glfw = _load_library(['glfw', 'glfw3'], ['.so', '.dylib'],
-                      ['',
-                       here,
-                       os.path.join(here,'glfw-3.3.bin.MAC64/'),
-                       '/usr/lib64', '/usr/local/lib64',
-                       '/usr/lib', '/usr/local/lib',
-                       '/usr/lib/x86_64-linux-gnu/'], _glfw_get_version)
+    # try to access the compiled version first
+    if sys.platform.startswith('darwin'):
+        glfwlib = os.path.join(here,'libglfw.dylib')
+        if not os.path.exists(glfwlib):
+            glfwlib = os.path.join(here,'glfw-3.3.bin.MAC64/libglfw.3.3.dylib')
+    elif sys.platform.startswith('linux'):
+        glfwlib = os.path.join(here,'libglfw.so')
+    try:  
+        _glfw = ctypes.CDLL(glfwlib)
+    except OSError:
+        _glfw = None
+
+
+    # if failed search it on the system (slower)
+    if _glfw == None:
+        _glfw = _load_library(['glfw', 'glfw3'], ['.so', '.dylib'],
+                     ['',
+                      here,
+                      os.path.join(here,'glfw-3.3.bin.MAC64/'),
+                      '/usr/lib64', '/usr/local/lib64',
+                      '/usr/lib', '/usr/local/lib',
+                      '/usr/lib/x86_64-linux-gnu/'], _glfw_get_version)
+
+    # otherwise try to build
     if _glfw == None:
         print('BUILDING GLFW...')
-        os.system('mkdir -p %s/build; cd %s/build; cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw.so src/libglfw.dyld %s '%(here,here, here))
+        os.system('mkdir -p %s/build; cd %s/build; cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF ../glfw_src; make; cp src/libglfw.so src/libglfw.dylib %s '%(here,here, here))
         try:
            _glfw = _load_library(['glfw', 'glfw3'], ['.so', '.dylib'],
                           ['', here,], _glfw_get_version)
