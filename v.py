@@ -704,7 +704,8 @@ def change_image(new_idx):
          sys.argv.pop(new_idx+1)
          if len(sys.argv) == 1: 
             print('self destruct!\n')
-            sys.exit(0)
+            #glfw.set_window_should_close(window,1) #window not available
+            exit(1)
          return new_idx_bak
 
       # tidy up memory 
@@ -1048,10 +1049,8 @@ def keyboard_callback(window, key, scancode, action, mods):
     # exit
     if (key==glfw.KEY_Q  or key==glfw.KEY_ESCAPE ) and action ==glfw.PRESS:
        glfw.set_window_should_close(window,1)
-       glfw.terminate()
        global x0,y0,w0,h0
        print(x0,y0,w0,h0)
-       sys.exit(0)
 
     if V.redisp == 1:
        # Call the mouseMotion callback in order to update the display info
