@@ -397,7 +397,30 @@ SHADERS = {
       }
 SHADER_PROGRAMS = {}
 
+def use_shader_program(name):
+   ##########
+   ######## SETUP FRAGMENT SHADER FOR CONTRAST CHANGE
+   ##########
+   # http://www.cityinabottle.org/nodebox/shader/
+   # http://www.seethroughskin.com/blog/?p=771
+   # http://python-opengl-examples.blogspot.com.es/
+   # http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
 
+   # programs, shaders, and the current program are global variables
+   global program, SHADERS, SHADER_PROGRAMS
+   if name not in SHADER_PROGRAMS:
+      SHADER_PROGRAMS[name] = compileProgram(
+            compileShader(SHADERS[name], GL_FRAGMENT_SHADER),
+            );
+      glLinkProgram( SHADER_PROGRAMS[name] )
+   program = SHADER_PROGRAMS[name]
+   # try to activate/enable shader program
+   # handle errors wisely
+   try:
+      glUseProgram(program)   
+   except OpenGL.error.GLError:
+      print(glGetProgramInfoLog(program))
+      raise
 
 
 #### INTERFACE STATE
@@ -1182,52 +1205,48 @@ def display( window ):
              glut.glutBitmapCharacter(font_style, ord(i))
     
     
-
     ## USE THE SHADER FOR RENDERING THE IMAGE
-    global program, SHADERS, SHADER_PROGRAMS
-    program = SHADER_PROGRAMS['rgba']
-
     if D.nch == 2 :
        V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 2
        if V.TOGGLE_FLOW_COLORS == 1:
-          program  = SHADER_PROGRAMS['oflow']
+          use_shader_program('oflow')
        else:
-          program  = SHADER_PROGRAMS['rb']
+          use_shader_program('rb')
     elif D.nch == 1:
        if V.TOGGLE_FLOW_COLORS == 1:
           V.inv_param=0
-          program  = SHADER_PROGRAMS['djet']
+          use_shader_program('djet')
        elif V.TOGGLE_FLOW_COLORS == 2:
           V.inv_param=0
-          program  = SHADER_PROGRAMS['dhsv']
+          use_shader_program('dhsv')
        elif V.TOGGLE_FLOW_COLORS == 3:
           V.inv_param=1
-          program  = SHADER_PROGRAMS['djet']
+          use_shader_program('djet')
        elif V.TOGGLE_FLOW_COLORS == 4:
           V.inv_param=1
-          program  = SHADER_PROGRAMS['rgba']
+          use_shader_program('rgba')
        elif V.TOGGLE_FLOW_COLORS == 5:
           V.inv_param=0
-          program  = SHADER_PROGRAMS['bayer']
+          use_shader_program('bayer')
        else:
           V.inv_param=0
-          program  = SHADER_PROGRAMS['rgba']
+          use_shader_program('rgba')
     else:
        V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 4
        if V.TOGGLE_FLOW_COLORS == 1:
           V.inv_param=0
-          program  = SHADER_PROGRAMS['hsv']
+          use_shader_program('hsv')
        elif V.TOGGLE_FLOW_COLORS == 2:
           V.inv_param=1
-          program  = SHADER_PROGRAMS['rgba']
+          use_shader_program('rgba')
        elif V.TOGGLE_FLOW_COLORS == 3:
           V.inv_param=0
-          program  = SHADER_PROGRAMS['rgb']
+          use_shader_program('rgb')
        else:
           V.inv_param=0
-          program  = SHADER_PROGRAMS['rgba']
+          use_shader_program('rgba')
 
-    glUseProgram(program)   
+    global program
     # set the values of the shader uniform variables (global)
     shader_a= glGetUniformLocation(program, b"shader_a")
     glUniform1f(shader_a,V.scale_param)
@@ -1451,34 +1470,10 @@ def main():
     # show the window
     glfw.show_window (window)
 
+    # compile and load the shader
+    use_shader_program('rgba')
 
-
-##########
-######## SETUP FRAGMENT SHADER FOR CONTRAST CHANGE
-##########
-# http://www.cityinabottle.org/nodebox/shader/
-# http://www.seethroughskin.com/blog/?p=771
-# http://python-opengl-examples.blogspot.com.es/
-# http://www.lighthouse3d.com/tutorials/glsl-core-tutorial/fragment-shader/
-
-    global program, SHADERS, SHADER_PROGRAMS
-    for s in SHADERS.keys():
-       SHADER_PROGRAMS[s] = compileProgram(
-             compileShader(SHADERS[s], GL_FRAGMENT_SHADER),
-             );
-       glLinkProgram( SHADER_PROGRAMS[s] )
-
-    program = SHADER_PROGRAMS['rgba']
-    
-
-    #global program
-    # try to activate/enable shader program
-    # handle errors wisely
-    try:
-       glUseProgram(program)   
-    except OpenGL.error.GLError:
-       print(glGetProgramInfoLog(program))
-       raise
+    global program 
     # set the values of the shader uniform variables (global)
     shader_a= glGetUniformLocation(program, b"shader_a")
     glUniform1f(shader_a,V.scale_param)
@@ -1496,6 +1491,7 @@ def main():
 
     # Loop until the user closes the window
     while not glfw.window_should_close(window):
+        #glfw.set_window_should_close(window,1) # only used for profiling
 
         # Render here
         if V.redisp:
