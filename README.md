@@ -1,10 +1,11 @@
-# Python vflip an OpenGL accelerated image viewer
+# pvflip an OpenGL accelerated image viewer
 
 ## Features:
    * Smoothly inspect and zoom high dynamic range images with a simple interface using the mouse and modifier keys
    * Can visualize a large collection of image formats and bit depths (integer and float): PNG, PNM, JPG, TIFF, EXR, camera RAW, VRT, and other more obscure formats like PFM, FLO and MW
    * Drag-and-drop on a running instance to add files to the current view list and remove with (-)
    * Support for retina displays
+   * Take snapshots of the current window content
    * [Precompiled binaries for Windows and MAC](https://github.com/gfacciol/pvflip/releases/tag/v0.6)
 
 # Running the program: No need for installation
@@ -13,10 +14,10 @@ If the [dependencies are met](#dependencies) just run
 
     > ./v.py image_file image_file2 ...
 
-Note: On Linux and MAC platforms it will compile the glfw and piio modules during the first execution, 
+**Note**: On Linux and MAC platforms the program will compile the glfw and piio modules during its first execution, 
 leaving the libraries in the corresponding subdirectories.
 
-Note 2: If the compiler complains about "declarations that are only allowed in C99 mode" then specify the dialect with 
+**Note 2**: If the compiler complains about "declarations that are only allowed in C99 mode" then specify the dialect with 
 
     > CC='gcc -std=c99' ./v.py image_file
 
@@ -32,7 +33,7 @@ Alternatively use a precompiled version of pvflip.
 
 ## Precompiled pvflip:
 
-[Standalone binaries of pvflip are available for](https://github.com/gfacciol/pvflip/releases/tag/v0.6)
+[Standalone binaries of pvflip are available for:](https://github.com/gfacciol/pvflip/releases/tag/v0.6)
 
    * WIN32: exe program in a single file or with multiple files. 
    * WIN64: without openEXR support: single file or multiple files.
