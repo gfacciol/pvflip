@@ -384,6 +384,38 @@ By[0]= 1.; By[1]= 0.35; By[2]= 0.4 ; By[3]=0.  ; By[4]=0.;   By[5]=0.;   By[6]=0
   }
    """
 
+sentinel2_shader = """
+   uniform sampler2D src;
+
+   void main (void)
+   {
+      float palette[36];
+      palette[0]  = 0.0; palette[1]  = 0.0; palette[2]  = 0.0;  // black
+      palette[3]  = 1.0; palette[4]  = 0.0; palette[5]  = 0.0;  // red
+      palette[6]  = 0.2; palette[7]  = 0.2; palette[8]  = 0.2;  // dark grey
+      palette[9]  = 0.4; palette[10] = 0.2; palette[11] = 0.2;  // brown
+      palette[12] = 0.1; palette[13] = 0.9; palette[14] = 0.1;  // green
+      palette[15] = 1.0; palette[16] = 1.0; palette[17] = 0.0;  // yellow
+      palette[18] = 0.0; palette[19] = 0.0; palette[20] = 1.0;  // blue
+      palette[21] = 0.4; palette[22] = 0.4; palette[23] = 0.4;  // medium grey
+      palette[24] = 0.6; palette[25] = 0.6; palette[26] = 0.6;  // light grey
+      palette[27] = 0.9; palette[28] = 0.9; palette[29] = 0.9;  // white
+      palette[30] = 0.0; palette[31] = 1.0; palette[32] = 1.0;  // light blue
+      palette[33] = 1.0; palette[34] = 0.0; palette[35] = 1.0;  // pink
+
+      vec4 p = texture2D(src, gl_TexCoord[0].xy);
+      float t = p.x;
+      int i = int(t);
+      if (i < 0) i = 0;
+      if (i > 11) i = 11;
+      p.x = palette[3*i+0];
+      p.y = palette[3*i+1];
+      p.z = palette[3*i+2];
+      p.w = 1.0;
+      gl_FragColor = p;
+   }
+   """
+
 SHADERS = { 
       'rgba' : rgba_shader,
       'bayer': bayer_shader,
@@ -394,6 +426,7 @@ SHADERS = {
       'djet' : depth_shader_jet,
       'ddirt': depth_shader_dirt,
       'rgb'  : rgb_shader,
+      's2l2a': sentinel2_shader,
       }
 SHADER_PROGRAMS = {}
 
@@ -984,7 +1017,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # reset visualization
     if key==glfw.KEY_1 and action==glfw.PRESS:
-       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 6
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 7
        V.redisp = 1
 
 
@@ -1228,6 +1261,9 @@ def display( window ):
        elif V.TOGGLE_FLOW_COLORS == 5:
           V.inv_param=0
           use_shader_program('bayer')
+       elif V.TOGGLE_FLOW_COLORS == 6:
+          V.inv_param=0
+          use_shader_program('s2l2a')
        else:
           V.inv_param=0
           use_shader_program('rgba')
