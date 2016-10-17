@@ -18,12 +18,17 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
 
+# Accelerate startup by preventing importing numpy, which for some 
+# reason is loaded during shader compilation but never used.
+# http://stackoverflow.com/questions/1350466/preventing-python-code-from-importing-certain-modules
+import sys
+sys.modules['numpy']=None
+
 from OpenGL.GL import *
 from OpenGL.GL.shaders import *
 # TODO REMOVE GLUT: only needed for the text
 import OpenGL.GLUT as glut
 from glfw import glfw
-import sys
 
 ### SYSTEM SPECIFIC STUFF
 import platform
