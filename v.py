@@ -1166,8 +1166,6 @@ def display( window ):
 
     glClear(GL_COLOR_BUFFER_BIT);
 
-#    glDisable( GL_LIGHTING) # context lights by default
-
     # this is the effective size of the current window
     # ideally winx,winy should be equal to D.w,D.h BUT if the 
     # image is larger than the screen glutReshapeWindow(D.w,D.h) 
@@ -1185,7 +1183,6 @@ def display( window ):
     if (fb_width,fb_height, winx, winy) == (0,0,0,0):
        return
     display_scale = fb_width / winx
-    #print(display_scale)
 
 
     glViewport(0, 0, int(winx*display_scale), int(winy*display_scale));
@@ -1197,8 +1194,11 @@ def display( window ):
 
 
     def drawImage(textureID,w,h,x0=0,y0=0):
+       """
+       glEnable (GL_TEXTURE_2D);
+       must be enabled before calling this function
+       """
        glPushMatrix()
-       glEnable (GL_TEXTURE_2D); #/* enable texture mapping */
        glBindTexture (GL_TEXTURE_2D, textureID); #/* bind to our texture, has id of 13 */
    
        # third operation
@@ -1217,8 +1217,7 @@ def display( window ):
        glTexCoord2d(1.0,0.0); glVertex3d(x0+w,y0   ,0);
        glTexCoord2d(0.0,0.0); glVertex3d(x0  ,y0   ,0);
        glEnd();
-   
-       glDisable (GL_TEXTURE_2D); #/* disable texture mapping */
+
        glPopMatrix()
 
 
@@ -1304,12 +1303,14 @@ def display( window ):
     glUniform1f(shader_B2, V.bias_vector[2])
 
     # DRAW THE IMAGE
+    glEnable (GL_TEXTURE_2D); #/* enable texture mapping */
     textureID=13
     for tile in D.imageBitmapTiles:
        _tilesz= glGetUniformLocation(program, b"_tilesz")
        glUniform2f(_tilesz, tile[3], tile[4]);
        drawImage(textureID,tile[3],tile[4],tile[1],tile[2])
        textureID=textureID+1
+    glDisable (GL_TEXTURE_2D); #/* disable texture mapping */
 
 
     # DONT USE THE SHADER FOR RENDERING THE HUD
@@ -1523,9 +1524,7 @@ def main():
     shader_c= glGetUniformLocation(program, b"shader_c")
     glUniform1i(shader_c,V.inv_param)
 
-#    # first display
-#    display(window)
-#    glFlush()
+    glDisable( GL_LIGHTING) # context lights by default
 
     toc('loadImage+data->RGBbitmap')
 
