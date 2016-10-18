@@ -63,64 +63,89 @@ extern "C" {
 
 
 
-// reads the RAW as it is
+// reads the RAW as it is. 
+// If multi-frame RAW, reads each frame to a different channel (available from libraw 1.8)
 int try_reading_file_with_libraw(const char *fname, struct iio_image *x)
 {
    int ret;
    int verbose=0;
-   int shot_select = 0;
 
    LibRaw RawProcessor;
 
+#define P1 RawProcessor.imgdata.idata
 #define S RawProcessor.imgdata.sizes
 #define OUT RawProcessor.imgdata.params
 
-   //
-   //OUT.shot_select=shot_selected;
 
+   // Open to obtain raw_count
    if(verbose) fprintf(stderr,"LIBRAW: Processing file %s\n",fname);
    if( (ret = RawProcessor.open_file(fname)) != LIBRAW_SUCCESS)
    {
       if(verbose) fprintf(stderr,"LIBRAW: Cannot open %s: %s\n",fname,libraw_strerror(ret));
       return 0; // no recycle b/c open file will recycle itself
    }
-   if(verbose)
-   {
-      fprintf(stderr,"LIBRAW: Image size: %dx%d\nRaw size: %dx%d\n",S.width,S.height,S.raw_width,S.raw_height);
-      fprintf(stderr,"LIBRAW: Margins: top=%d, left=%d\n",
-            S.top_margin,S.left_margin);
-   }
-
-   if( (ret = RawProcessor.unpack() ) != LIBRAW_SUCCESS)
-   {
-      if(verbose) fprintf(stderr,"LIBRAW: Cannot unpack %s: %s\n",fname,libraw_strerror(ret));
-      return 0;
-   }
 
    if(verbose)
-      fprintf(stderr,"LIBRAW: Unpacked....\n");
-
-   if(!(RawProcessor.imgdata.idata.filters || RawProcessor.imgdata.idata.colors == 1))
-   {
-      if(verbose) fprintf(stderr,"LIBRAW: Only Bayer-pattern RAW files supported, sorry....\n");
-      return 0;
-   }
+   fprintf(stderr, "FRAMES: %d\n", P1.raw_count);
 
 
-
-
-
-
+   // allocate output assuming that all frames are the same size as the first one
    x->type = 3; //IIO_TYPE_INT16;
-   x->pixel_dimension=1;
+   x->pixel_dimension=P1.raw_count;
    x->dimension = 2;
    x->format = 0; //IIO_FORMAT_WHATEVER;
    x->contiguous_data = false;
    //bool caca[3];
    x->sizes[0] = S.raw_width;
    x->sizes[1] = S.raw_height;
-   x->data = (void*) malloc(sizeof(char)*2*S.raw_width*S.raw_height);
-   memcpy(x->data, RawProcessor.imgdata.rawdata.raw_image, sizeof(char)*2*S.raw_width*S.raw_height);
+   x->data = (void*) malloc(sizeof(char)*2*S.raw_width*S.raw_height*P1.raw_count);
+
+
+   for(int f=0;f<P1.raw_count; f++) {
+   
+      // select each frame in turn (assuming that all frames are the same size)
+      OUT.shot_select=f;
+
+      if(verbose) fprintf(stderr,"LIBRAW: Processing file %s\n",fname);
+      if( (ret = RawProcessor.open_file(fname)) != LIBRAW_SUCCESS)
+      {
+         if(verbose) fprintf(stderr,"LIBRAW: Cannot open %s: %s\n",fname,libraw_strerror(ret));
+         return 0; // no recycle b/c open file will recycle itself
+      }
+
+      if(verbose)
+      {
+         fprintf(stderr,"LIBRAW: Image size: %dx%d\nRaw size: %dx%d\n",S.width,S.height,S.raw_width,S.raw_height);
+         fprintf(stderr,"LIBRAW: Margins: top=%d, left=%d\n",
+               S.top_margin,S.left_margin);
+      }
+
+      if( (ret = RawProcessor.unpack() ) != LIBRAW_SUCCESS)
+      {
+         if(verbose) fprintf(stderr,"LIBRAW: Cannot unpack %s: %s\n",fname,libraw_strerror(ret));
+         return 0;
+      }
+
+      if(verbose)
+         fprintf(stderr,"LIBRAW: Unpacked....\n");
+
+      if(!(RawProcessor.imgdata.idata.filters || RawProcessor.imgdata.idata.colors == 1))
+      {
+         if(verbose) fprintf(stderr,"LIBRAW: Only Bayer-pattern RAW files supported, sorry....\n");
+         return 0;
+      }
+
+
+      const int stride = P1.raw_count;
+      const int sz = S.raw_width*S.raw_height;
+      uint16_t* odata = (uint16_t*)x->data;
+      if (P1.raw_count==1) {
+         memcpy(odata, RawProcessor.imgdata.rawdata.raw_image, sizeof(uint16_t)*sz*stride);
+      } else {
+         for(int t=0; t<sz; t++) odata[stride*t+f] = RawProcessor.imgdata.rawdata.raw_image[t];
+      }
+
+   }
 
    if(verbose) fprintf(stderr,"LIBRAW: Sent to IIO\n");
    return 1;
