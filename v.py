@@ -868,6 +868,9 @@ def mouseButtons_callback(window, button, action, mods):
        xx1,yy1 = x0+w0,y0+h0
        xx0,yy0,xx1,yy1 = int(xx0),int(yy0),int(xx1),int(yy1)
        print(xx0, yy0, abs(xx1-xx0), abs(yy1-yy0))
+
+       global HELPstr
+       HELPstr="\nSelection:\n(%d,%d) %dx%d"%(xx0, yy0, abs(xx1-xx0), abs(yy1-yy0))
        V.redisp=1
 
     # drag
