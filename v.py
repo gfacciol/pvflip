@@ -1161,6 +1161,9 @@ def drop_callback(window, filenames):
     glfw.focus_window(window);
 
 
+def display_refresh(window):
+    global V
+    V.redisp = 1
 
 def display( window ):
     """Render scene geometry"""
@@ -1487,7 +1490,7 @@ def main():
     glfw.set_cursor_pos_callback(window, mouseMotion_callback)
     glfw.set_drop_callback(window, drop_callback)
     glfw.set_framebuffer_size_callback(window, resize_callback)
-    glfw.set_window_refresh_callback(window,display)
+    glfw.set_window_refresh_callback(window,display_refresh)
 #    glfw.set_char_callback (window, unicode_char_callback)
 
     if not glut.INITIALIZED:
