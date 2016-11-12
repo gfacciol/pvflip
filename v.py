@@ -576,25 +576,17 @@ class ViewportState:
       return x,y
 
 
-
    ## pan and zoom functions
-   def zoom_update(V, offset, mx=-1, my=-1):
-
+   def zoom_set(V, factor, mx=-1, my=-1):
       if mx<0 or my<0 or mx >= V.winx or my >= V.winy:
           mx = V.winx/2
           my = V.winy/2
 
       tx,ty = V.compute_image_coordinates(mx, my)
-      
-      factor = 1.0+(1.3-1.0)*GLOBAL_WHEEL_SCALING*abs(offset);
-      if (offset > 0):
-          factor = 1.0/factor
 
-      #newzoom = V.zoom_param + offset/10. ## old
-      newzoom = V.zoom_param * factor
+      newzoom = factor
       if newzoom >= 0.001 :       # prevent image inversion
          V.zoom_param = newzoom
-
 
       V.dx = tx - mx/V.zoom_param
       V.dy = ty - my/V.zoom_param
@@ -605,6 +597,18 @@ class ViewportState:
          print("DISABLE: fit image to window")
 
       V.redisp=1
+
+
+   ## pan and zoom functions
+   def zoom_update(V, offset, mx=-1, my=-1):
+      factor = 1.0+(1.3-1.0)*abs(offset);
+      if (offset > 0):
+          factor = 1.0/factor
+
+      newzoom = V.zoom_param * factor
+      V.zoom_set(newzoom, mx, my)
+
+
 
    def reset_zoom(V):
       V.dx,V.dy=0,0
@@ -910,7 +914,7 @@ def mouseWheel_callback(window, xoffset, yoffset):
 
       # zoom
       if V.alt_is_pressed:
-         V.zoom_update(yoffset*GLOBAL_WHEEL_SCALING,curr_x,curr_y)
+         V.zoom_update(yoffset*GLOBAL_WHEEL_SCALING*GLOBAL_WHEEL_SCALING,curr_x,curr_y)
       # scale
       elif V.shift_is_pressed:
          V.radius_update(yoffset*GLOBAL_WHEEL_SCALING)
@@ -1000,10 +1004,11 @@ def keyboard_callback(window, key, scancode, action, mods):
 
 
     # zoom
+    from math import log, floor, ceil, pow
     if key==glfw.KEY_P and (action==glfw.PRESS or action==glfw.REPEAT):
-       V.zoom_update(+1)
+       V.zoom_set ( pow(2, floor(log(V.zoom_param,2.0) + 1.0)) )
     if key==glfw.KEY_M and (action==glfw.PRESS or action==glfw.REPEAT):
-       V.zoom_update(-1)
+       V.zoom_set ( pow(2, ceil(log(V.zoom_param,2.0) - 1.0)) )
 
     # fit image to window
     if key==glfw.KEY_F and action==glfw.PRESS:
