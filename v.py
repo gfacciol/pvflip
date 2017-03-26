@@ -389,6 +389,102 @@ By[0]= 1.; By[1]= 0.35; By[2]= 0.4 ; By[3]=0.  ; By[4]=0.;   By[5]=0.;   By[6]=0
   }
    """
 
+
+DEM_shader = """
+   uniform sampler2D src;
+  uniform float shader_a;
+  uniform float shader_b;
+  uniform int   shader_c;
+  
+  bool isnan( float val )
+  {
+    return ( val < 0.0 || 0.0 < val || val == 0.0 ) ? false : true;
+    // important: some nVidias failed to cope with version below.
+    // Probably wrong optimization.
+    /*return ( val <= 0.0 || 0.0 <= val ) ? false : true;*/
+  }
+
+
+
+   void main (void)
+   {
+
+//http://soliton.vm.bytemark.co.uk/pub/cpt-city/td/tn/DEM_screen.png.index.html
+//float palI[8], palR[8], palG[8], palB[8];
+//int N=6;
+//palI[0]=0.00000; palR[0]=0.00000; palG[0]=0.51765; palB[0]=0.20784;  
+//palI[1]=0.12500; palR[1]=0.20000; palG[1]=0.80000; palB[1]=0.00000;
+//palI[2]=0.25000; palR[2]=0.95686; palG[2]=0.94118; palB[2]=0.44314;
+//palI[3]=0.50000; palR[3]=0.95686; palG[3]=0.74118; palB[3]=0.27059;
+//palI[4]=0.75000; palR[4]=0.60000; palG[4]=0.39216; palB[4]=0.16863;
+//palI[5]=1.00000; palR[5]=1.00000; palG[5]=1.00000; palB[5]=1.00000;
+
+////http://soliton.vm.bytemark.co.uk/pub/cpt-city/td/DEM_print.gpf
+//float palI[8], palR[8], palG[8], palB[8];
+//int N=7;
+//palI[0]=0.00000; palR[0]=0.20000; palG[0]=0.40000; palB[0]=0.00000;  
+//palI[1]=0.12500; palR[1]=0.50588; palG[1]=0.76471; palB[1]=0.12157;
+//palI[2]=0.25000; palR[2]=1.00000; palG[2]=1.00000; palB[2]=0.80000;
+//palI[3]=0.50000; palR[3]=0.95686; palG[3]=0.74118; palB[3]=0.27059;
+//palI[4]=0.62500; palR[4]=0.40000; palG[4]=0.20000; palB[4]=0.04706;
+//palI[5]=0.75000; palR[5]=0.40000; palG[5]=0.20000; palB[5]=0.00000;
+//palI[6]=1.00000; palR[6]=1.00000; palG[6]=1.00000; palB[6]=1.00000;
+   
+      
+
+//http://soliton.vm.bytemark.co.uk/pub/cpt-city/td/tn/DEM_poster.png.index.html
+float palI[8], palR[8], palG[8], palB[8];
+ int N = 8;
+palI[0]=0.00000; palR[0]=0.00000; palG[0]=0.38039; palB[0]=0.27843;  
+palI[1]=0.01020; palR[1]=0.06275; palG[1]=0.47843; palB[1]=0.18431;
+palI[2]=0.10200; palR[2]=0.90980; palG[2]=0.84314; palB[2]=0.49020;
+palI[3]=0.24490; palR[3]=0.63137; palG[3]=0.26275; palB[3]=0.00000;
+palI[4]=0.34690; palR[4]=0.61961; palG[4]=0.00000; palB[4]=0.00000;
+palI[5]=0.57140; palR[5]=0.43137; palG[5]=0.43137; palB[5]=0.43137;
+palI[6]=0.81630; palR[6]=1.00000; palG[6]=1.00000; palB[6]=1.00000;
+palI[7]=1.00000; palR[7]=1.00000; palG[7]=1.00000; palB[7]=1.00000;
+
+
+       vec4 q = texture2D(src, gl_TexCoord[0].xy);
+       q = 1.0 - (q * shader_a + shader_b);
+       if (shader_c > 0)
+         q = 1.0 - q;
+
+       vec4 p;
+       p.w = 1.0;
+
+       if(isnan(q.x)) {
+           p.x = 0.0;
+           p.y = 0.0;
+           p.z = 0.0;
+       } else {
+
+          q = clamp(q, 0.0, 1.0);
+
+          p.x = palR[0]; 
+          p.y = palG[0]; 
+          p.z = palB[0]; 
+   
+          for(int i=1;i<N;i++) {
+           if(q.x >= palI[i-1] && q.x <= palI[i]){
+                  float cc = (palI[i] - q.x) / (palI[i] -  palI[i-1]);
+                  p.x = cc * palR[i-1] + (1.0 - cc)*palR[i];
+                  p.y = cc * palG[i-1] + (1.0 - cc)*palG[i];
+                  p.z = cc * palB[i-1] + (1.0 - cc)*palB[i];
+            }
+          }
+          if(q.x >= palI[N-1]){
+              p.x = palR[N-1];
+              p.y = palG[N-1];
+              p.z = palB[N-1];
+          }
+      }
+
+
+       gl_FragColor = clamp(p, 0.0, 1.0);
+   }
+   """
+
 sentinel2_shader = """
    uniform sampler2D src;
 
@@ -430,6 +526,7 @@ SHADERS = {
       'dhsv' : depth_shader_hsv,
       'djet' : depth_shader_jet,
       'ddirt': depth_shader_dirt,
+      'dem'  : DEM_shader,
       'rgb'  : rgb_shader,
       's2l2a': sentinel2_shader,
       }
@@ -1030,7 +1127,7 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # reset visualization
     if key==glfw.KEY_1 and action==glfw.PRESS:
-       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 7
+       V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 8
        V.redisp = 1
 
 
@@ -1255,12 +1352,14 @@ def display( window ):
     
     ## USE THE SHADER FOR RENDERING THE IMAGE
     if D.nch == 2 :
+#       [('oflow',0), ('rb',0)]
        V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 2
        if V.TOGGLE_FLOW_COLORS == 1:
           use_shader_program('oflow')
        else:
           use_shader_program('rb')
     elif D.nch == 1:
+#       [('rgba',0), ('djet',0), ('dhsv',0), ('dem',0), ('djet',1), ('rgba',1), ('bayer',0), ('s2l2a',0)]
        if V.TOGGLE_FLOW_COLORS == 1:
           V.inv_param=0
           use_shader_program('djet')
@@ -1272,11 +1371,14 @@ def display( window ):
           use_shader_program('djet')
        elif V.TOGGLE_FLOW_COLORS == 4:
           V.inv_param=1
-          use_shader_program('rgba')
+          use_shader_program('dem')
        elif V.TOGGLE_FLOW_COLORS == 5:
+          V.inv_param=1
+          use_shader_program('rgba')
+       elif V.TOGGLE_FLOW_COLORS == 6:
           V.inv_param=0
           use_shader_program('bayer')
-       elif V.TOGGLE_FLOW_COLORS == 6:
+       elif V.TOGGLE_FLOW_COLORS == 7:
           V.inv_param=0
           use_shader_program('s2l2a')
        else:
@@ -1284,6 +1386,7 @@ def display( window ):
           use_shader_program('rgba')
     else:
        V.TOGGLE_FLOW_COLORS = V.TOGGLE_FLOW_COLORS % 4
+#       [('rgba',0), ('hsv',0), ('rgba',1), ('rgb',0)]
        if V.TOGGLE_FLOW_COLORS == 1:
           V.inv_param=0
           use_shader_program('hsv')
@@ -1330,7 +1433,11 @@ def display( window ):
     if V.display_hud:
        a=D.v_max-D.v_min
        b=D.v_min
-       drawHud('%s\n%s\n%s\n%.3f %.3f\n%.3f %.3f'%(D.filename, V.txt_pos,V.txt_val,V.v_center,V.v_radius,D.v_min,D.v_max))
+       drawHud('%s\n%s\n%s\n%.3f %.3f %s\n%.3f %.3f'%(
+            D.filename, V.txt_pos,V.txt_val,V.v_center,V.v_radius, 
+            'auto' if V.TOGGLE_AUTOMATIC_RANGE else '',
+            D.v_min,D.v_max)
+            )
 
     global HELPstr
     if HELPstr != "":
