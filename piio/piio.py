@@ -254,7 +254,7 @@ def write(filename,data):
    from ctypes import c_char_p, c_int, c_float
    from numpy.ctypeslib import ndpointer
 
-   iiosave = libiio.iio_save_image_float_vec
+   iiowrite = libiio.iio_write_image_float_vec
 
    h  =data.shape[0]
    w  =data.shape[1]
@@ -262,9 +262,9 @@ def write(filename,data):
    if (len(data.shape)>2):
       nch=data.shape[2]
 
-   iiosave.restype = None
-   iiosave.argtypes = [c_char_p, ndpointer(c_float),c_int,c_int,c_int]
-   iiosave(str(filename).encode('ascii'), data.astype('float32'), w, h, nch)
+   iiowrite.restype = None
+   iiowrite.argtypes = [c_char_p, ndpointer(c_float),c_int,c_int,c_int]
+   iiowrite(str(filename).encode('ascii'), data.astype('float32'), w, h, nch)
 
 
 def write_buffer_uint8(filename,data,w,h,nch):
@@ -276,11 +276,11 @@ def write_buffer_uint8(filename,data,w,h,nch):
 
    libiio.reverse_vertically_uint8_buffer_inplace(data,w,h,nch)
 
-   iiosave = libiio.iio_save_image_uint8_vec
+   iiowrite = libiio.iio_write_image_uint8_vec
 
-   iiosave.restype = None
-   iiosave.argtypes = [c_char_p, c_char_p,c_int,c_int,c_int]
-   iiosave(str(filename).encode('ascii'), data, w, h, nch)
+   iiowrite.restype = None
+   iiowrite.argtypes = [c_char_p, c_char_p,c_int,c_int,c_int]
+   iiowrite(str(filename).encode('ascii'), data, w, h, nch)
 
 #d = piio.read('testimg.tif')
 #print d.shape
