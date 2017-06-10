@@ -1300,6 +1300,58 @@ def display( window ):
     glLoadIdentity ();
     glOrtho (0, winx, winy, 0, -1, 1);
 
+    def drawSVG():
+       glPushMatrix()
+       # third operation
+       glScalef(V.zoom_param, V.zoom_param,1)
+
+       # second operation
+       glTranslate(-V.dx,-V.dy,0)
+       # second operation
+       glTranslate(V.dragdx,V.dragdy,.5)
+
+   
+#       glEnable (GL_BLEND)
+#       glBlendFunc (GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+#       glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+       glBlendEquation(GL_MIN)
+       glClearColor(1,1,1,0)
+       global svg
+       svg.draw(0,0, scale=1.0, angle=0)
+#       glDisable(GL_BLEND)
+
+       glPopMatrix()
+
+       return
+
+    def drawSVG2():
+       glPushMatrix()
+       # third operation
+       glScalef(V.zoom_param, V.zoom_param,1)
+
+       # second operation
+       glTranslate(-V.dx,-V.dy,0)
+       # second operation
+       glTranslate(V.dragdx,V.dragdy,.5)
+
+    
+       glLogicOp(GL_INVERT)
+       glEnable(GL_COLOR_LOGIC_OP)
+       glClearColor(1,0,1,0)
+#       glEnable (GL_BLEND)
+#       glBlendFunc (GL_ONE_MINUS_SRC_ALPHA,GL_SRC_ALPHA);
+       global svg
+       svg.draw(0,0, scale=1.0, angle=0)
+#       glDisable(GL_BLEND)
+       glDisable(GL_COLOR_LOGIC_OP)
+       glBlendEquation(GL_MAX)
+
+       glPopMatrix()
+
+       return
+
+
+    drawSVG()
 
     def drawImage(textureID,w,h,x0=0,y0=0):
        """
@@ -1307,6 +1359,7 @@ def display( window ):
        must be enabled before calling this function
        """
        glPushMatrix()
+       glEnable (GL_TEXTURE_2D); #/* enable texture mapping */
        glBindTexture (GL_TEXTURE_2D, textureID); #/* bind to our texture, has id of 13 */
    
        # third operation
@@ -1326,6 +1379,7 @@ def display( window ):
        glTexCoord2d(0.0,0.0); glVertex3d(x0  ,y0   ,0);
        glEnd();
 
+       glDisable (GL_TEXTURE_2D); #/* disable texture mapping */
        glPopMatrix()
 
 
@@ -1417,18 +1471,18 @@ def display( window ):
     glUniform1f(shader_B2, V.bias_vector[2])
 
     # DRAW THE IMAGE
-    glEnable (GL_TEXTURE_2D); #/* enable texture mapping */
     textureID=13
     for tile in D.imageBitmapTiles:
        _tilesz= glGetUniformLocation(program, b"_tilesz")
        glUniform2f(_tilesz, tile[3], tile[4]);
        drawImage(textureID,tile[3],tile[4],tile[1],tile[2])
        textureID=textureID+1
-    glDisable (GL_TEXTURE_2D); #/* disable texture mapping */
 
 
     # DONT USE THE SHADER FOR RENDERING THE HUD
     glUseProgram(0)   
+
+    #drawSVG2()
 
     if V.display_hud:
        a=D.v_max-D.v_min
@@ -1610,6 +1664,16 @@ def main():
 
     toc('glfw init')
     tic()
+
+    import glsvg
+    global svg
+    #svg = glsvg.SVGDoc(str('gits/glsvg/svgs/primitives.svg'))
+    svg = glsvg.SVGDoc(str('o.svg'))
+    #svg = glsvg.SVGDoc(str('gits/glsvg/svgs/atiger.svg'))
+#    glClearColor(1,1,1,1)
+#    glEnable(GL_LINE_SMOOTH)
+#    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST)
 
     # read the image: this affects the global variables DD, D, and V
     current_image_idx = change_image(0)
