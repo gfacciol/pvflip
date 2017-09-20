@@ -1316,8 +1316,11 @@ def display( window ):
 #       glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
        glBlendEquation(GL_MIN)
        glClearColor(1,1,1,0)
-       global svg
-       svg.draw(0,0, scale=1.0, angle=0)
+       try:
+           global svg
+           svg.draw(0,0, scale=1.0, angle=0)
+       except NameError:
+           pass
 #       glDisable(GL_BLEND)
 
        glPopMatrix()
@@ -1340,8 +1343,11 @@ def display( window ):
        glClearColor(1,0,1,0)
 #       glEnable (GL_BLEND)
 #       glBlendFunc (GL_ONE_MINUS_SRC_ALPHA,GL_SRC_ALPHA);
-       global svg
-       svg.draw(0,0, scale=1.0, angle=0)
+       try:
+           global svg
+           svg.draw(0,0, scale=1.0, angle=0)
+       except NameError:
+           pass
 #       glDisable(GL_BLEND)
        glDisable(GL_COLOR_LOGIC_OP)
        glBlendEquation(GL_MAX)
@@ -1596,6 +1602,22 @@ def toc(name=''):
 
 
 
+def pick_option(argv, option, default):
+   # it's a parameter or just a flag?
+   if default == '':
+      id = 0
+   else:
+      id = 1
+
+   for i in range(len(argv)-id):
+      if argv[i]  == '-'+option:
+         r = argv[i+id]
+         argv.pop(i+id)
+         if id:
+            argv.pop(i)
+         return r
+   return default
+
 
 
 
@@ -1605,12 +1627,15 @@ def toc(name=''):
 
 def main():
 
+    # get the svg file
+    svgfile =     pick_option(sys.argv, 'svg', None)
+
     # verify input
     if len(sys.argv) == 1:
        # check if the standard input is a tty (not a pipe)
        if sys.stdin.isatty():
           print("Incorrect syntax, use:")
-          print('  > ' + sys.argv[0] + " image.png")
+          print('  > ' + sys.argv[0] +  " image.png [-svg shape.svg]" )
 
           # show a default image if exists
           sys.argv.append('/Users/facciolo/uiskentuie_standing_stone.png')
@@ -1668,7 +1693,10 @@ def main():
     import glsvg
     global svg
     #svg = glsvg.SVGDoc(str('gits/glsvg/svgs/primitives.svg'))
-    svg = glsvg.SVGDoc(str('o.svg'))
+    try:
+        svg = glsvg.SVGDoc(str(svgfile))
+    except IOError:
+        pass
     #svg = glsvg.SVGDoc(str('gits/glsvg/svgs/atiger.svg'))
 #    glClearColor(1,1,1,1)
 #    glEnable(GL_LINE_SMOOTH)
