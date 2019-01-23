@@ -1877,6 +1877,7 @@ def display( window ):
     """Render scene geometry"""
 
     global D,V
+    global program
 
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -1905,6 +1906,33 @@ def display( window ):
     glMatrixMode (GL_PROJECTION);
     glLoadIdentity ();
     glOrtho (0, winx, winy, 0, -1, 1);
+
+
+    def drawSVG():
+       glPushMatrix()
+       # third operation
+       glScalef(V.zoom_param, V.zoom_param,1)
+
+       # second operation
+       glTranslate(-V.dx,-V.dy,0)
+       # second operation
+       glTranslate(V.dragdx,V.dragdy,.5)
+
+       glEnable(GL_BLEND)
+       #glEnable(GL_COLOR_LOGIC_OP)
+
+       try:
+           global svg
+           svg.draw(0,0, scale=1.0, angle=0, background=False)
+       except NameError:
+           pass
+
+       glDisable(GL_BLEND)
+       #glDisable(GL_COLOR_LOGIC_OP)
+
+       glPopMatrix()
+
+       return
 
 
     def drawImage(textureID,w,h,x0=0,y0=0):
@@ -2009,7 +2037,8 @@ def display( window ):
           V.inv_param=0
           use_shader_program('rgba')
 
-    global program
+
+
     # set the values of the shader uniform variables (global)
     shader_a= glGetUniformLocation(program, b"shader_a")
     glUniform1f(shader_a,V.scale_param)
@@ -2086,6 +2115,8 @@ def display( window ):
        drawHud("%.2f"%(V.v_center + V.v_radius), (0,1,0), (V.winx-50, 10))
        drawHud("%.2f"%(V.v_center             ), (0,1,0), (V.winx-50, 105))
        drawHud("%.2f"%(V.v_center - V.v_radius), (0,1,0), (V.winx-50, 198))
+
+       drawSVG()
 
     global HELPstr
     if HELPstr != "":
@@ -2190,6 +2221,22 @@ def toc(name=''):
 
 
 
+def pick_option(argv, option, default):
+   # it's a parameter or just a flag?
+   if default == '':
+      id = 0
+   else:
+      id = 1
+
+   for i in range(len(argv)-id):
+      if argv[i]  == '-'+option:
+         r = argv[i+id]
+         argv.pop(i+id)
+         if id:
+            argv.pop(i)
+         return r
+   return default
+
 
 
 
@@ -2199,12 +2246,14 @@ def toc(name=''):
 
 def main():
 
+    # get the svg file
+    svgfile = pick_option(sys.argv, 'svg', None)
     # verify input
     if len(sys.argv) == 1:
        # check if the standard input is a tty (not a pipe)
        if sys.stdin.isatty():
           print("Incorrect syntax, use:")
-          print('  > ' + sys.argv[0] + " image.png")
+          print('  > ' + sys.argv[0] +  " image.png [-svg shape.svg]" )
 
           # show a default image if exists
           sys.argv.append('/Users/facciolo/uiskentuie_standing_stone.png')
@@ -2258,6 +2307,21 @@ def main():
 
     toc('glfw init')
     tic()
+
+    global svg
+    #svg = glsvg.SVGDoc(str('gits/glsvg/svgs/primitives.svg'))
+    if svgfile:
+        try:
+            import glsvg as glsvg
+            svg = glsvg.SVGDoc(str(svgfile))
+        except IOError:
+            pass
+#    glClearColor(1,1,1,1)
+#    glEnable(GL_LINE_SMOOTH)
+#    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST)
+    glDisable(GL_BLEND)
+    #glDisable(GL_COLOR_LOGIC_OP)
 
     # read the image: this affects the global variables DD, D, and V
     current_image_idx = change_image(0)
