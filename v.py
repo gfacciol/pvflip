@@ -1554,6 +1554,7 @@ def mouseMotion_callback(window, x,y):
 def mouseButtons_callback(window, button, action, mods):
     global V
     global x0,y0,w0,h0,b0state,b1state
+    global HELPstr
 
     # select region
     if button==glfw.MOUSE_BUTTON_RIGHT and action==glfw.PRESS:
@@ -1573,7 +1574,6 @@ def mouseButtons_callback(window, button, action, mods):
        xx0,yy0,xx1,yy1 = int(xx0),int(yy0),int(xx1),int(yy1)
        print(xx0, yy0, abs(xx1-xx0), abs(yy1-yy0))
 
-       global HELPstr
        HELPstr="\nSelection:\n(%d,%d) %dx%d"%(xx0, yy0, abs(xx1-xx0), abs(yy1-yy0))
        V.redisp=1
 
@@ -1629,6 +1629,7 @@ def mouseWheel_callback(window, xoffset, yoffset):
 # letters and numbers
 def keyboard_callback(window, key, scancode, action, mods):
     global V,D
+    global HELPstr
 
     if V.mute_keyboard: # only mute the spacebar event
        return
@@ -1732,7 +1733,6 @@ def keyboard_callback(window, key, scancode, action, mods):
     if key==glfw.KEY_1 and action==glfw.PRESS:
        V.TOGGLE_FLOW_COLORS = (V.TOGGLE_FLOW_COLORS + 1) % 9
        V.redisp = 1
-       global HELPstr
        HELPstr="Color palette index: %d\n"%V.TOGGLE_FLOW_COLORS + \
                "=======================\n"
        print(HELPstr)
@@ -1782,7 +1782,6 @@ def keyboard_callback(window, key, scancode, action, mods):
 
     # help
     if key==glfw.KEY_H   and action==glfw.PRESS:
-       global HELPstr
        HELPstr="==============HELP==============\n" + \
                "Q     : quit\n" + \
                "U     : show/hide HUD\n" + \
