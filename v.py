@@ -2,6 +2,7 @@
 # Copyright 2013, Gabriele Facciolo <facciolo@cmla.ens-cachan.fr>
 ############################################################################
 #
+# 01/2019: add svg
 # 08/2016: change glfw to add drag-and-drop, support for retina displays
 # 06/2015: add snapshot key S 
 # 05/2015: organize shaders
@@ -2252,13 +2253,15 @@ def main():
     if len(sys.argv) == 1:
        # check if the standard input is a tty (not a pipe)
        if sys.stdin.isatty():
+          from os import stat, path
+          here  = path.dirname(__file__)
+
           print("Incorrect syntax, use:")
           print('  > ' + sys.argv[0] +  " image.png [-svg shape.svg]" )
 
           # show a default image if exists
-          sys.argv.append('/Users/facciolo/uiskentuie_standing_stone.png')
+          sys.argv.append(here + '/uiskentuie_standing_stone.png')
           try:
-             from os import stat
              stat(sys.argv[1])
           except OSError:
              sys.exit(1)
@@ -2314,6 +2317,7 @@ def main():
         try:
             import glsvg as glsvg
             svg = glsvg.SVGDoc(str(svgfile))
+            V.display_hud=2
         except IOError:
             pass
 #    glClearColor(1,1,1,1)
